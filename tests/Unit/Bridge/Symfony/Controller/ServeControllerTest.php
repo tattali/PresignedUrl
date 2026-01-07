@@ -241,6 +241,66 @@ final class ServeControllerTest extends TestCase
         self::assertSame('bytes 0-100/1000', $response->headers->get('Content-Range'));
     }
 
+    #[Test]
+    public function it_handles_string_header_values(): void
+    {
+        $fileResponse = new FileResponse(
+            200,
+            ['Content-Type' => 'text/plain'],
+            'Test',
+        );
+
+        $fileServer = $this->createMock(FileServerInterface::class);
+        $fileServer->expects($this->once())
+            ->method('serve')
+            ->willReturn($fileResponse);
+
+        $request = $this->createMock(Request::class);
+        $request->query = new InputBag([
+            'X-Expires' => '1234567890',
+            'X-Signature' => 'abc123',
+        ]);
+
+        // Create a custom HeaderBag mock that returns string values
+        $headerBag = $this->createMock(HeaderBag::class);
+        $headerBag->expects($this->once())
+            ->method('all')
+            ->willReturn(['accept' => 'text/plain']);
+        $request->headers = $headerBag;
+
+        $request->expects($this->any())
+            ->method('getMethod')
+            ->willReturn('GET');
+
+        $controller = new ServeController($fileServer);
+        $response = $controller($request, 'bucket', 'file.txt');
+
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function it_handles_missing_query_params(): void
+    {
+        $fileResponse = new FileResponse(
+            400,
+            ['Content-Type' => 'text/plain'],
+            'Bad Request',
+        );
+
+        $fileServer = $this->createMock(FileServerInterface::class);
+        $fileServer->expects($this->once())
+            ->method('serve')
+            ->with('bucket', 'file.txt', 0, '', 'GET', $this->isType('array'))
+            ->willReturn($fileResponse);
+
+        $request = $this->createRequest('GET', []);
+
+        $controller = new ServeController($fileServer);
+        $response = $controller($request, 'bucket', 'file.txt');
+
+        self::assertSame(400, $response->getStatusCode());
+    }
+
     /**
      * @param array<string, string> $query
      * @param array<string, string> $headers

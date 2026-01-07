@@ -7,6 +7,7 @@ namespace Tattali\PresignedUrl\Tests\Unit\Storage;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Tattali\PresignedUrl\Adapter\AdapterInterface;
 use Tattali\PresignedUrl\Adapter\LocalAdapter;
 use Tattali\PresignedUrl\Config\Config;
 use Tattali\PresignedUrl\Exception\BucketNotFoundException;
@@ -113,5 +114,89 @@ final class StorageTest extends TestCase
 
         self::assertNotNull($components);
         self::assertLessThanOrEqual(time() + 86400 + 1, $components->expires);
+    }
+
+    #[Test]
+    public function it_returns_null_for_url_with_array_query_params(): void
+    {
+        $url = 'https://cdn.example.com/bucket/file.pdf?X-Expires[]=123&X-Signature[]=abc';
+
+        self::assertNull($this->storage->parseUrl($url));
+    }
+
+    #[Test]
+    public function it_returns_null_for_url_with_zero_expires(): void
+    {
+        $url = 'https://cdn.example.com/bucket/file.pdf?X-Expires=0&X-Signature=abc123';
+
+        self::assertNull($this->storage->parseUrl($url));
+    }
+
+    #[Test]
+    public function it_returns_null_for_url_with_empty_signature(): void
+    {
+        $url = 'https://cdn.example.com/bucket/file.pdf?X-Expires=12345&X-Signature=';
+
+        self::assertNull($this->storage->parseUrl($url));
+    }
+
+    #[Test]
+    public function it_returns_null_for_url_with_missing_query_params(): void
+    {
+        $url = 'https://cdn.example.com/bucket/file.pdf?other=value';
+
+        self::assertNull($this->storage->parseUrl($url));
+    }
+
+    #[Test]
+    public function it_uses_native_presigned_url_when_supported(): void
+    {
+        $nativeUrl = 'https://s3.amazonaws.com/bucket/file.pdf?X-Amz-Signature=abc123';
+
+        $adapter = $this->createMock(AdapterInterface::class);
+        $adapter->method('supportsNativePresignedUrl')->willReturn(true);
+        $adapter->method('nativePresignedUrl')->willReturn($nativeUrl);
+
+        $this->storage->addBucket('s3bucket', $adapter);
+
+        $url = $this->storage->temporaryUrl('s3bucket', 'file.pdf', 3600);
+
+        self::assertSame($nativeUrl, $url);
+    }
+
+    #[Test]
+    public function it_falls_back_to_internal_url_when_native_returns_null(): void
+    {
+        $adapter = $this->createMock(AdapterInterface::class);
+        $adapter->method('supportsNativePresignedUrl')->willReturn(true);
+        $adapter->method('nativePresignedUrl')->willReturn(null);
+
+        $this->storage->addBucket('s3bucket', $adapter);
+
+        $url = $this->storage->temporaryUrl('s3bucket', 'file.pdf', 3600);
+
+        self::assertStringStartsWith('https://cdn.example.com/s3bucket/file.pdf?', $url);
+    }
+
+    #[Test]
+    public function it_adds_bucket_without_validation(): void
+    {
+        $adapter = new LocalAdapter('/tmp');
+
+        $this->storage->addBucket('invalid bucket name!', $adapter, false);
+
+        self::assertTrue($this->storage->hasBucket('invalid bucket name!'));
+    }
+
+    #[Test]
+    public function it_strips_leading_slash_from_path(): void
+    {
+        $adapter = new LocalAdapter('/tmp');
+        $this->storage->addBucket('documents', $adapter);
+
+        $url = $this->storage->temporaryUrl('documents', '/leading/slash/file.pdf', 3600);
+
+        self::assertStringContainsString('/documents/leading/slash/file.pdf?', $url);
+        self::assertStringNotContainsString('//leading', $url);
     }
 }

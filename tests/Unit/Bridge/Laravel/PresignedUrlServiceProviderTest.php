@@ -6,8 +6,12 @@ namespace Tattali\PresignedUrl\Tests\Unit\Bridge\Laravel;
 
 use Illuminate\Config\Repository;
 use Illuminate\Container\Container;
+use League\Flysystem\FilesystemOperator;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
+use Tattali\PresignedUrl\Adapter\AwsS3Adapter;
+use Tattali\PresignedUrl\Adapter\FlysystemAdapter;
 use Tattali\PresignedUrl\Bridge\Laravel\PresignedUrlServiceProvider;
 use Tattali\PresignedUrl\Config\Config;
 use Tattali\PresignedUrl\Server\FileServer;
@@ -287,6 +291,114 @@ final class PresignedUrlServiceProviderTest extends TestCase
 
         self::assertSame($storage1, $storage2);
     }
+
+    #[Test]
+    public function it_registers_s3_bucket(): void
+    {
+        $this->app['config']['presigned-url.buckets'] = [
+            's3files' => [
+                'adapter' => 's3',
+                'key' => 'AKIAIOSFODNN7EXAMPLE',
+                'secret' => 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+                'bucket' => 'my-s3-bucket',
+                'region' => 'us-east-1',
+            ],
+        ];
+
+        $provider = new TestablePresignedUrlServiceProvider($this->app);
+        $provider->register();
+
+        /** @var Storage $storage */
+        $storage = $this->app->make(StorageInterface::class);
+
+        self::assertTrue($storage->hasBucket('s3files'));
+
+        $adapter = $storage->getBucket('s3files');
+        self::assertInstanceOf(AwsS3Adapter::class, $adapter);
+    }
+
+    #[Test]
+    public function it_registers_s3_bucket_with_endpoint(): void
+    {
+        $this->app['config']['presigned-url.buckets'] = [
+            'minio' => [
+                'adapter' => 's3',
+                'key' => 'minioadmin',
+                'secret' => 'minioadmin',
+                'bucket' => 'test-bucket',
+                'region' => 'us-east-1',
+                'endpoint' => 'http://localhost:9000',
+            ],
+        ];
+
+        $provider = new TestablePresignedUrlServiceProvider($this->app);
+        $provider->register();
+
+        /** @var Storage $storage */
+        $storage = $this->app->make(StorageInterface::class);
+
+        self::assertTrue($storage->hasBucket('minio'));
+    }
+
+    #[Test]
+    public function it_registers_flysystem_bucket(): void
+    {
+        $filesystem = $this->createMock(FilesystemOperator::class);
+        $this->app->bind('my.flysystem.service', fn () => $filesystem);
+
+        $this->app['config']['presigned-url.buckets'] = [
+            'flysystem-bucket' => [
+                'adapter' => 'flysystem',
+                'service' => 'my.flysystem.service',
+            ],
+        ];
+
+        $provider = new TestablePresignedUrlServiceProvider($this->app);
+        $provider->register();
+
+        /** @var Storage $storage */
+        $storage = $this->app->make(StorageInterface::class);
+
+        self::assertTrue($storage->hasBucket('flysystem-bucket'));
+
+        $adapter = $storage->getBucket('flysystem-bucket');
+        self::assertInstanceOf(FlysystemAdapter::class, $adapter);
+    }
+
+    #[Test]
+    public function it_injects_logger_when_available(): void
+    {
+        $logger = $this->createMock(LoggerInterface::class);
+        $this->app->bind(LoggerInterface::class, fn () => $logger);
+
+        $provider = new TestablePresignedUrlServiceProviderWithLogger($this->app);
+        $provider->register();
+
+        $server = $this->app->make(FileServerInterface::class);
+
+        self::assertInstanceOf(FileServer::class, $server);
+    }
+
+    #[Test]
+    public function it_uses_default_values_when_config_not_set(): void
+    {
+        $this->app['config']['presigned-url.signature'] = [];
+        $this->app['config']['presigned-url.serving'] = [];
+        $this->app['config']['presigned-url.security'] = [];
+
+        $provider = new TestablePresignedUrlServiceProvider($this->app);
+        $provider->register();
+
+        /** @var Config $config */
+        $config = $this->app->make(Config::class);
+
+        self::assertSame('sha256', $config->signature->algorithm);
+        self::assertSame(16, $config->signature->length);
+        self::assertSame('X-Expires', $config->signature->expiresParam);
+        self::assertSame('X-Signature', $config->signature->signatureParam);
+        self::assertSame(3600, $config->serving->defaultTtl);
+        self::assertSame(86400, $config->serving->maxTtl);
+    }
 }
 
 /**
@@ -336,3 +448,28 @@ class TestablePresignedUrlServiceProvider extends PresignedUrlServiceProvider
         $this->app->alias(StorageInterface::class, 'presigned-url');
     }
 }
+
+/**
+ * Test-friendly service provider that includes logger support.
+ */
+class TestablePresignedUrlServiceProviderWithLogger extends TestablePresignedUrlServiceProvider
+{
+    public function register(): void
+    {
+        parent::register();
+
+        $this->app->singleton(FileServerInterface::class, function ($app): FileServerInterface {
+            $logger = $app->bound(\Psr\Log\LoggerInterface::class)
+                ? $app->make(\Psr\Log\LoggerInterface::class)
+                : null;
+
+            return new \Tattali\PresignedUrl\Server\FileServer(
+                $app->make(StorageInterface::class),
+                $app->make(SignerInterface::class),
+                $app->make(Config::class),
+                $logger,
+            );
+        });
+    }
+}
+

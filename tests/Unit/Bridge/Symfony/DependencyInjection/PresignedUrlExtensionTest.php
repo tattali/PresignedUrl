@@ -7,6 +7,7 @@ namespace Tattali\PresignedUrl\Tests\Unit\Bridge\Symfony\DependencyInjection;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Tattali\PresignedUrl\Bridge\Symfony\Controller\ServeController;
 use Tattali\PresignedUrl\Bridge\Symfony\DependencyInjection\PresignedUrlExtension;
 use Tattali\PresignedUrl\Config\Config;
@@ -273,6 +274,84 @@ final class PresignedUrlExtensionTest extends TestCase
         $extension = new PresignedUrlExtension();
 
         self::assertSame('presigned_url', $extension->getAlias());
+    }
+
+    #[Test]
+    public function it_registers_s3_bucket(): void
+    {
+        $container = $this->createContainer([
+            'secret' => 's3-test',
+            'base_url' => 'https://cdn.example.com',
+            'buckets' => [
+                's3bucket' => [
+                    'adapter' => 's3',
+                    'key' => 'AKIAIOSFODNN7EXAMPLE',
+                    'secret' => 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+                    'bucket' => 'my-s3-bucket',
+                    'region' => 'us-east-1',
+                ],
+            ],
+        ]);
+
+        self::assertTrue($container->hasDefinition('presigned_url.adapter.s3bucket'));
+    }
+
+    #[Test]
+    public function it_registers_s3_bucket_with_endpoint(): void
+    {
+        $container = $this->createContainer([
+            'secret' => 's3-endpoint-test',
+            'base_url' => 'https://cdn.example.com',
+            'buckets' => [
+                'minio' => [
+                    'adapter' => 's3',
+                    'key' => 'minioadmin',
+                    'secret' => 'minioadmin',
+                    'bucket' => 'test-bucket',
+                    'region' => 'us-east-1',
+                    'endpoint' => 'http://localhost:9000',
+                ],
+            ],
+        ]);
+
+        self::assertTrue($container->hasDefinition('presigned_url.adapter.minio'));
+    }
+
+    #[Test]
+    public function it_registers_flysystem_bucket(): void
+    {
+        $container = $this->createContainer([
+            'secret' => 'flysystem-test',
+            'base_url' => 'https://cdn.example.com',
+            'buckets' => [
+                'flybucket' => [
+                    'adapter' => 'flysystem',
+                    'service' => 'my.flysystem.service',
+                ],
+            ],
+        ]);
+
+        self::assertTrue($container->hasDefinition('presigned_url.adapter.flybucket'));
+    }
+
+    #[Test]
+    public function it_registers_custom_adapter_as_reference(): void
+    {
+        $container = $this->createContainer([
+            'secret' => 'custom-test',
+            'base_url' => 'https://cdn.example.com',
+            'buckets' => [
+                'custom' => [
+                    'adapter' => 'my.custom.adapter.service',
+                ],
+            ],
+        ]);
+
+        $storageDef = $container->getDefinition(StorageInterface::class);
+        $methodCalls = $storageDef->getMethodCalls();
+
+        self::assertNotEmpty($methodCalls);
+        self::assertSame('addBucket', $methodCalls[0][0]);
     }
 
     /**

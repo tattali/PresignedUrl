@@ -115,6 +115,41 @@ final class LocalAdapterTest extends TestCase
         self::assertNull($this->adapter->nativePresignedUrl('test.txt', time() + 3600));
     }
 
+    #[Test]
+    public function it_normalizes_paths_with_dots_and_slashes(): void
+    {
+        file_put_contents($this->tempDir . '/test.txt', 'content');
+
+        self::assertTrue($this->adapter->exists('./test.txt'));
+        self::assertTrue($this->adapter->exists('//test.txt'));
+        self::assertTrue($this->adapter->exists('/./test.txt'));
+    }
+
+    #[Test]
+    public function it_throws_for_directory_not_file(): void
+    {
+        mkdir($this->tempDir . '/subdir', 0755, true);
+
+        self::assertFalse($this->adapter->exists('subdir'));
+    }
+
+    #[Test]
+    public function it_throws_when_reading_directory(): void
+    {
+        mkdir($this->tempDir . '/subdir', 0755, true);
+
+        $this->expectException(FileNotFoundException::class);
+        $this->adapter->read('subdir');
+    }
+
+    #[Test]
+    public function it_handles_backslash_paths(): void
+    {
+        file_put_contents($this->tempDir . '/test.txt', 'content');
+
+        self::assertTrue($this->adapter->exists('\\test.txt'));
+    }
+
     private function removeDirectory(string $dir): void
     {
         if (!is_dir($dir)) {

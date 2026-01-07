@@ -205,20 +205,69 @@ final class ServeControllerTest extends TestCase
         self::assertSame(206, $response->getStatusCode());
     }
 
+    #[Test]
+    public function it_handles_headers_with_accept(): void
+    {
+        $fileResponse = new FileResponse(
+            200,
+            ['Content-Type' => 'text/plain'],
+            'Test',
+        );
+
+        $fileServer = $this->createMock(FileServerInterface::class);
+        $fileServer->expects($this->once())
+            ->method('serve')
+            ->willReturn($fileResponse);
+
+        $request = $this->createRequest('GET', [
+            'X-Expires' => '1234567890',
+            'X-Signature' => 'abc123',
+        ], [
+            'Accept' => 'text/plain',
+        ]);
+
+        $controller = new ServeController($fileServer);
+        $response = $controller($request, 'bucket', 'file.txt');
+
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function it_handles_missing_query_params(): void
+    {
+        $fileResponse = new FileResponse(
+            400,
+            ['Content-Type' => 'text/plain'],
+            'Bad Request',
+        );
+
+        $fileServer = $this->createMock(FileServerInterface::class);
+        $fileServer->expects($this->once())
+            ->method('serve')
+            ->with('bucket', 'file.txt', 0, '', 'GET', $this->isType('array'))
+            ->willReturn($fileResponse);
+
+        $request = $this->createRequest('GET', []);
+
+        $controller = new ServeController($fileServer);
+        $response = $controller($request, 'bucket', 'file.txt');
+
+        self::assertSame(400, $response->getStatusCode());
+    }
+
     /**
      * @param array<string, string> $query
      * @param array<string, string> $headers
      */
     private function createRequest(string $method, array $query, array $headers = []): Request
     {
-        $request = $this->createMock(Request::class);
-        $request->query = new InputBag($query);
-        $request->headers = new HeaderBag(array_change_key_case($headers, CASE_LOWER));
-
-        $request->expects($this->any())
-            ->method('getMethod')
-            ->willReturn($method);
-
-        return $request;
+        return Request::create(
+            uri: '/bucket/path?' . http_build_query($query),
+            method: $method,
+            server: array_map(fn($value) => $value, array_combine(
+                array_map(fn($key) => 'HTTP_' . strtoupper(str_replace('-', '_', $key)), array_keys($headers)),
+                array_values($headers)
+            )),
+        );
     }
 }
