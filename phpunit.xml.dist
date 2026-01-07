@@ -20,4 +20,11 @@
             <directory>src</directory>
         </include>
     </source>
+    <coverage>
+        <report>
+            <clover outputFile="build/coverage.xml"/>
+            <html outputDirectory="build/coverage"/>
+            <xml outputDirectory="build/coverage-xml"/>
+        </report>
+    </coverage>
 </phpunit>
