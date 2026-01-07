@@ -1,8 +1,8 @@
 # PresignedUrl
 
-[![CI](https://github.com/tattali/presigned-url/actions/workflows/ci.yml/badge.svg)](https://github.com/tattali/presigned-url/actions/workflows/ci.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=presigned-url&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=presigned-url)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=presigned-url&metric=coverage)](https://sonarcloud.io/summary/new_code?id=presigned-url)
+[![CI](https://github.com/tattali/PresignedUrl/actions/workflows/ci.yml/badge.svg)](https://github.com/tattali/PresignedUrl/actions/workflows/ci.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=tattali_PresignedUrl&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=tattali_PresignedUrl)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=tattali_PresignedUrl&metric=coverage)](https://sonarcloud.io/summary/new_code?id=tattali_PresignedUrl)
 [![Latest Stable Version](https://poser.pugx.org/tattali/presigned-url/v/stable)](https://packagist.org/packages/tattali/presigned-url)
 [![License](https://poser.pugx.org/tattali/presigned-url/license)](https://packagist.org/packages/tattali/presigned-url)
 
