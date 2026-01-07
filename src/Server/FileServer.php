@@ -36,45 +36,65 @@ readonly class FileServer implements FileServerInterface
         array $headers = [],
     ): FileResponse {
         try {
-            $this->validateSignature($bucket, $path, $expires, $signature);
-            $this->validateExpiration($expires);
-
-            $adapter = $this->storage->getBucket($bucket);
-            $this->validateExtension($path);
-
-            if (!$adapter->exists($path)) {
-                throw new FileNotFoundException($path);
-            }
-
-            $this->validateFileSize($adapter, $path);
-
-            $response = $this->buildResponse($adapter, $path, $method, $headers);
-
-            $this->logger?->info('File served', [
-                'bucket' => $bucket,
-                'path' => $path,
-                'status' => $response->getStatusCode(),
-                'method' => $method,
-            ]);
-
-            return $response;
-        } catch (InvalidSignatureException) {
-            $this->logger?->warning('Invalid signature', ['bucket' => $bucket, 'path' => $path]);
-
-            return new FileResponse(403, ['Content-Type' => 'text/plain'], 'Forbidden');
-        } catch (ExpiredUrlException) {
-            $this->logger?->info('Expired URL', ['bucket' => $bucket, 'path' => $path, 'expires' => $expires]);
-
-            return new FileResponse(410, ['Content-Type' => 'text/plain'], 'Gone');
-        } catch (FileNotFoundException|BucketNotFoundException) {
-            $this->logger?->info('File not found', ['bucket' => $bucket, 'path' => $path]);
-
-            return new FileResponse(404, ['Content-Type' => 'text/plain'], 'Not Found');
+            return $this->doServe($bucket, $path, $expires, $signature, $method, $headers);
         } catch (PresignedUrlException $e) {
-            $this->logger?->warning('Bad request', ['bucket' => $bucket, 'path' => $path, 'error' => $e->getMessage()]);
-
-            return new FileResponse(400, ['Content-Type' => 'text/plain'], 'Bad Request');
+            return $this->handleException($e, $bucket, $path, $expires);
         }
+    }
+
+    /**
+     * @param array<string, string> $headers
+     */
+    protected function doServe(
+        string $bucket,
+        string $path,
+        int $expires,
+        string $signature,
+        string $method,
+        array $headers,
+    ): FileResponse {
+        $this->validateSignature($bucket, $path, $expires, $signature);
+        $this->validateExpiration($expires);
+
+        $adapter = $this->storage->getBucket($bucket);
+        $this->validateExtension($path);
+
+        if (!$adapter->exists($path)) {
+            throw new FileNotFoundException($path);
+        }
+
+        $this->validateFileSize($adapter, $path);
+
+        $response = $this->buildResponse($adapter, $path, $method, $headers);
+
+        $this->logger?->info('File served', [
+            'bucket' => $bucket,
+            'path' => $path,
+            'status' => $response->getStatusCode(),
+            'method' => $method,
+        ]);
+
+        return $response;
+    }
+
+    protected function handleException(PresignedUrlException $e, string $bucket, string $path, int $expires): FileResponse
+    {
+        return match (true) {
+            $e instanceof InvalidSignatureException => $this->logAndRespond('warning', 'Invalid signature', ['bucket' => $bucket, 'path' => $path], 403, 'Forbidden'),
+            $e instanceof ExpiredUrlException => $this->logAndRespond('info', 'Expired URL', ['bucket' => $bucket, 'path' => $path, 'expires' => $expires], 410, 'Gone'),
+            $e instanceof FileNotFoundException, $e instanceof BucketNotFoundException => $this->logAndRespond('info', 'File not found', ['bucket' => $bucket, 'path' => $path], 404, 'Not Found'),
+            default => $this->logAndRespond('warning', 'Bad request', ['bucket' => $bucket, 'path' => $path, 'error' => $e->getMessage()], 400, 'Bad Request'),
+        };
+    }
+
+    /**
+     * @param array<string, mixed> $context
+     */
+    protected function logAndRespond(string $level, string $message, array $context, int $status, string $body): FileResponse
+    {
+        $this->logger?->$level($message, $context);
+
+        return new FileResponse($status, ['Content-Type' => 'text/plain'], $body);
     }
 
     /**
@@ -87,31 +107,36 @@ readonly class FileServer implements FileServerInterface
         string $method = 'GET',
         array $headers = [],
     ): FileResponse {
+        $parsed = $this->parseRequest($uri, $query);
+
+        if ($parsed === null) {
+            return new FileResponse(400, ['Content-Type' => 'text/plain'], 'Bad Request');
+        }
+
+        return $this->serve($parsed['bucket'], $parsed['path'], $parsed['expires'], $parsed['signature'], $method, $headers);
+    }
+
+    /**
+     * @param array<string, string> $query
+     *
+     * @return array{bucket: string, path: string, expires: int, signature: string}|null
+     */
+    protected function parseRequest(string $uri, array $query): ?array
+    {
         $expiresParam = $this->config->signature->expiresParam;
         $signatureParam = $this->config->signature->signatureParam;
 
         $expires = isset($query[$expiresParam]) ? (int) $query[$expiresParam] : 0;
         $signature = $query[$signatureParam] ?? '';
 
-        if ($expires === 0 || $signature === '') {
-            return new FileResponse(400, ['Content-Type' => 'text/plain'], 'Bad Request');
-        }
-
         $path = parse_url($uri, PHP_URL_PATH);
-        if (!is_string($path)) {
-            return new FileResponse(400, ['Content-Type' => 'text/plain'], 'Bad Request');
+        $parts = is_string($path) ? explode('/', ltrim($path, '/'), 2) : [];
+
+        if ($expires === 0 || $signature === '' || count($parts) !== 2) {
+            return null;
         }
 
-        $path = ltrim($path, '/');
-        $parts = explode('/', $path, 2);
-
-        if (count($parts) !== 2) {
-            return new FileResponse(400, ['Content-Type' => 'text/plain'], 'Bad Request');
-        }
-
-        [$bucket, $filePath] = $parts;
-
-        return $this->serve($bucket, $filePath, $expires, $signature, $method, $headers);
+        return ['bucket' => $parts[0], 'path' => $parts[1], 'expires' => $expires, 'signature' => $signature];
     }
 
     protected function validateSignature(string $bucket, string $path, int $expires, string $signature): void
@@ -147,9 +172,7 @@ readonly class FileServer implements FileServerInterface
     }
 
     /**
-     * Build the response for a file request.
-     *
-     * @param array<string, string> $headers Request headers
+     * @param array<string, string> $headers
      */
     protected function buildResponse(
         AdapterInterface $adapter,
@@ -172,7 +195,22 @@ readonly class FileServer implements FileServerInterface
             return new FileResponse(200, $responseHeaders);
         }
 
-        $range = $this->parseRange($headers, $size);
+        return $this->buildBodyResponse($adapter, $path, $mimeType, $size, $headers, $responseHeaders);
+    }
+
+    /**
+     * @param array<string, string> $requestHeaders
+     * @param array<string, string> $responseHeaders
+     */
+    protected function buildBodyResponse(
+        AdapterInterface $adapter,
+        string $path,
+        string $mimeType,
+        int $size,
+        array $requestHeaders,
+        array $responseHeaders,
+    ): FileResponse {
+        $range = $this->parseRange($requestHeaders, $size);
 
         if ($range !== null) {
             return $this->buildPartialResponse($adapter, $path, $range, $size, $responseHeaders);
@@ -184,9 +222,7 @@ readonly class FileServer implements FileServerInterface
     }
 
     /**
-     * Build response headers for the file.
-     *
-     * @param array<string, string> $requestHeaders Original request headers
+     * @param array<string, string> $requestHeaders
      *
      * @return array<string, string>
      */
@@ -223,9 +259,7 @@ readonly class FileServer implements FileServerInterface
     }
 
     /**
-     * Check if the resource has been modified since the client's cached version.
-     *
-     * @param array<string, string> $headers Request headers containing If-None-Match or If-Modified-Since
+     * @param array<string, string> $headers
      */
     protected function isNotModified(array $headers, string $etag, int $lastModified): bool
     {
@@ -249,12 +283,9 @@ readonly class FileServer implements FileServerInterface
     }
 
     /**
-     * Parse the Range header from the request.
+     * @param array<string, string> $headers
      *
-     * @param array<string, string> $headers Request headers
-     * @param int $size Total file size in bytes
-     *
-     * @return array{start: int, end: int}|null Parsed range or null if not a valid range request
+     * @return array{start: int, end: int}|null
      */
     protected function parseRange(array $headers, int $size): ?array
     {
@@ -264,31 +295,21 @@ readonly class FileServer implements FileServerInterface
             return null;
         }
 
-        $range = substr($range, 6);
-        $parts = explode('-', $range);
+        $parts = explode('-', substr($range, 6));
 
         if (count($parts) !== 2) {
             return null;
         }
 
         $start = $parts[0] !== '' ? (int) $parts[0] : 0;
-        $end = $parts[1] !== '' ? (int) $parts[1] : $size - 1;
+        $end = $parts[1] !== '' ? min((int) $parts[1], $size - 1) : $size - 1;
 
-        if ($start > $end || $start >= $size) {
-            return null;
-        }
-
-        $end = min($end, $size - 1);
-
-        return ['start' => $start, 'end' => $end];
+        return ($start <= $end && $start < $size) ? ['start' => $start, 'end' => $end] : null;
     }
 
     /**
-     * Build a partial content (206) response for range requests.
-     *
-     * @param array{start: int, end: int} $range Byte range to serve
-     * @param int $totalSize Total file size in bytes
-     * @param array<string, string> $headers Base response headers
+     * @param array{start: int, end: int} $range
+     * @param array<string, string> $headers
      */
     protected function buildPartialResponse(
         AdapterInterface $adapter,
@@ -314,9 +335,7 @@ readonly class FileServer implements FileServerInterface
     }
 
     /**
-     * Get the response body, optionally compressed.
-     *
-     * @return resource|string The file content as a stream or compressed string
+     * @return resource|string
      */
     protected function getResponseBody(AdapterInterface $adapter, string $path, string $mimeType, int $size)
     {
@@ -338,6 +357,6 @@ readonly class FileServer implements FileServerInterface
 
     protected function generateEtag(string $path, int $size, int $lastModified): string
     {
-        return md5(sprintf('%s-%d-%d', $path, $size, $lastModified));
+        return md5(sprintf('%s-%d-%d', $path, $size, $lastModified)); // NOSONAR - ETag for caching, not security
     }
 }
