@@ -80,7 +80,9 @@ jobs:
         run: composer install --prefer-dist --no-interaction --no-progress
 
       - name: Run tests with coverage
-        run: vendor/bin/phpunit --colors=always --coverage-clover=coverage.xml --log-junit=test-results.xml
+        run: |
+          mkdir -p build
+          vendor/bin/phpunit --colors=always --coverage-clover=build/coverage.xml --log-junit=build/test-results.xml
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
