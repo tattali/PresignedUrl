@@ -8,8 +8,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\HttpFoundation\HeaderBag;
-use Symfony\Component\HttpFoundation\InputBag;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tattali\PresignedUrl\Bridge\Laravel\Http\Controllers\ServeController;
 use Tattali\PresignedUrl\Server\FileResponse;
@@ -266,7 +264,7 @@ final class ServeControllerTest extends TestCase
             method: $method,
             server: array_map(fn($value) => $value, array_combine(
                 array_map(fn($key) => 'HTTP_' . strtoupper(str_replace('-', '_', $key)), array_keys($headers)),
-                array_values($headers)
+                array_values($headers),
             )),
         );
     }

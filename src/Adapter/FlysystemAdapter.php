@@ -29,9 +29,6 @@ readonly class FlysystemAdapter implements AdapterInterface
         }
     }
 
-    /**
-     * @return resource
-     */
     public function readStream(string $path)
     {
         try {

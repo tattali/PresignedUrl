@@ -344,7 +344,7 @@ final class PresignedUrlServiceProviderTest extends TestCase
     public function it_registers_flysystem_bucket(): void
     {
         $filesystem = $this->createMock(FilesystemOperator::class);
-        $this->app->bind('my.flysystem.service', fn () => $filesystem);
+        $this->app->bind('my.flysystem.service', fn() => $filesystem);
 
         $this->app['config']['presigned-url.buckets'] = [
             'flysystem-bucket' => [
@@ -369,7 +369,7 @@ final class PresignedUrlServiceProviderTest extends TestCase
     public function it_injects_logger_when_available(): void
     {
         $logger = $this->createMock(LoggerInterface::class);
-        $this->app->bind(LoggerInterface::class, fn () => $logger);
+        $this->app->bind(LoggerInterface::class, fn() => $logger);
 
         $provider = new TestablePresignedUrlServiceProviderWithLogger($this->app);
         $provider->register();
@@ -472,4 +472,3 @@ class TestablePresignedUrlServiceProviderWithLogger extends TestablePresignedUrl
         });
     }
 }
-

@@ -74,9 +74,6 @@ readonly class AwsS3Adapter implements AdapterInterface
         }
     }
 
-    /**
-     * @return resource
-     */
     public function readStream(string $path)
     {
         try {

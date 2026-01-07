@@ -147,7 +147,9 @@ readonly class FileServer implements FileServerInterface
     }
 
     /**
-     * @param array<string, string> $headers
+     * Build the response for a file request.
+     *
+     * @param array<string, string> $headers Request headers
      */
     protected function buildResponse(
         AdapterInterface $adapter,
@@ -182,7 +184,9 @@ readonly class FileServer implements FileServerInterface
     }
 
     /**
-     * @param array<string, string> $requestHeaders
+     * Build response headers for the file.
+     *
+     * @param array<string, string> $requestHeaders Original request headers
      *
      * @return array<string, string>
      */
@@ -219,7 +223,9 @@ readonly class FileServer implements FileServerInterface
     }
 
     /**
-     * @param array<string, string> $headers
+     * Check if the resource has been modified since the client's cached version.
+     *
+     * @param array<string, string> $headers Request headers containing If-None-Match or If-Modified-Since
      */
     protected function isNotModified(array $headers, string $etag, int $lastModified): bool
     {
@@ -243,9 +249,12 @@ readonly class FileServer implements FileServerInterface
     }
 
     /**
-     * @param array<string, string> $headers
+     * Parse the Range header from the request.
      *
-     * @return array{start: int, end: int}|null
+     * @param array<string, string> $headers Request headers
+     * @param int $size Total file size in bytes
+     *
+     * @return array{start: int, end: int}|null Parsed range or null if not a valid range request
      */
     protected function parseRange(array $headers, int $size): ?array
     {
@@ -275,8 +284,11 @@ readonly class FileServer implements FileServerInterface
     }
 
     /**
-     * @param array{start: int, end: int} $range
-     * @param array<string, string> $headers
+     * Build a partial content (206) response for range requests.
+     *
+     * @param array{start: int, end: int} $range Byte range to serve
+     * @param int $totalSize Total file size in bytes
+     * @param array<string, string> $headers Base response headers
      */
     protected function buildPartialResponse(
         AdapterInterface $adapter,
@@ -302,7 +314,9 @@ readonly class FileServer implements FileServerInterface
     }
 
     /**
-     * @return resource|string
+     * Get the response body, optionally compressed.
+     *
+     * @return resource|string The file content as a stream or compressed string
      */
     protected function getResponseBody(AdapterInterface $adapter, string $path, string $mimeType, int $size)
     {

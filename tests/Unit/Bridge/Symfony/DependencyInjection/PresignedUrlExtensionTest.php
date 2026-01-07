@@ -7,7 +7,6 @@ namespace Tattali\PresignedUrl\Tests\Unit\Bridge\Symfony\DependencyInjection;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Tattali\PresignedUrl\Bridge\Symfony\Controller\ServeController;
 use Tattali\PresignedUrl\Bridge\Symfony\DependencyInjection\PresignedUrlExtension;
 use Tattali\PresignedUrl\Config\Config;

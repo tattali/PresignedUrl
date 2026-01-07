@@ -35,9 +35,6 @@ readonly class LocalAdapter implements AdapterInterface
         return $content;
     }
 
-    /**
-     * @return resource
-     */
     public function readStream(string $path)
     {
         $fullPath = $this->resolvePath($path);
