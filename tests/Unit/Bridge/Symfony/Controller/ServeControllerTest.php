@@ -23,7 +23,7 @@ final class ServeControllerTest extends TestCase
         $fileResponse = new FileResponse(
             200,
             ['Content-Type' => 'text/plain', 'Content-Length' => '11'],
-            'Hello World'
+            'Hello World',
         );
 
         $fileServer = $this->createMock(FileServerInterface::class);
@@ -56,7 +56,7 @@ final class ServeControllerTest extends TestCase
         $fileResponse = new FileResponse(
             200,
             ['Content-Type' => 'application/octet-stream'],
-            $stream
+            $stream,
         );
 
         $fileServer = $this->createMock(FileServerInterface::class);
@@ -81,7 +81,7 @@ final class ServeControllerTest extends TestCase
     {
         $fileResponse = new FileResponse(
             204,
-            ['Content-Type' => 'text/plain']
+            ['Content-Type' => 'text/plain'],
         );
 
         $fileServer = $this->createMock(FileServerInterface::class);
@@ -108,7 +108,7 @@ final class ServeControllerTest extends TestCase
         $fileResponse = new FileResponse(
             403,
             ['Content-Type' => 'text/plain'],
-            'Forbidden'
+            'Forbidden',
         );
 
         $fileServer = $this->createMock(FileServerInterface::class);
@@ -134,7 +134,7 @@ final class ServeControllerTest extends TestCase
         $fileResponse = new FileResponse(
             410,
             ['Content-Type' => 'text/plain'],
-            'Gone'
+            'Gone',
         );
 
         $fileServer = $this->createMock(FileServerInterface::class);
@@ -159,7 +159,7 @@ final class ServeControllerTest extends TestCase
         $fileResponse = new FileResponse(
             404,
             ['Content-Type' => 'text/plain'],
-            'Not Found'
+            'Not Found',
         );
 
         $fileServer = $this->createMock(FileServerInterface::class);
@@ -194,7 +194,7 @@ final class ServeControllerTest extends TestCase
                 'GET',
                 $this->callback(function (array $headers): bool {
                     return isset($headers['range']) && $headers['range'] === 'bytes=0-100';
-                })
+                }),
             )
             ->willReturn($fileResponse);
 
@@ -219,7 +219,7 @@ final class ServeControllerTest extends TestCase
                 'Content-Range' => 'bytes 0-100/1000',
                 'Content-Length' => '101',
             ],
-            'partial content'
+            'partial content',
         );
 
         $fileServer = $this->createMock(FileServerInterface::class);

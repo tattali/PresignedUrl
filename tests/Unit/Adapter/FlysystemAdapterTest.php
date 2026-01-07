@@ -8,6 +8,7 @@ use League\Flysystem\FilesystemOperator;
 use League\Flysystem\UnableToReadFile;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 use Tattali\PresignedUrl\Adapter\FlysystemAdapter;
 use Tattali\PresignedUrl\Exception\FileNotFoundException;
 
@@ -128,7 +129,7 @@ final class FlysystemAdapterTest extends TestCase
         $filesystem->expects($this->once())
             ->method('fileSize')
             ->with('missing.txt')
-            ->willThrowException(new \RuntimeException('File not found'));
+            ->willThrowException(new RuntimeException('File not found'));
 
         $adapter = new FlysystemAdapter($filesystem);
 
@@ -157,7 +158,7 @@ final class FlysystemAdapterTest extends TestCase
         $filesystem->expects($this->once())
             ->method('mimeType')
             ->with('unknown')
-            ->willThrowException(new \RuntimeException('Cannot detect'));
+            ->willThrowException(new RuntimeException('Cannot detect'));
 
         $adapter = new FlysystemAdapter($filesystem);
 
@@ -187,7 +188,7 @@ final class FlysystemAdapterTest extends TestCase
         $filesystem->expects($this->once())
             ->method('lastModified')
             ->with('missing.txt')
-            ->willThrowException(new \RuntimeException('File not found'));
+            ->willThrowException(new RuntimeException('File not found'));
 
         $adapter = new FlysystemAdapter($filesystem);
 

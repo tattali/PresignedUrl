@@ -62,7 +62,7 @@ final class PresignedUrlFlowTest extends TestCase
             $components->bucket,
             $components->path,
             $components->expires,
-            $components->signature
+            $components->signature,
         );
 
         self::assertSame(200, $response->getStatusCode());
@@ -95,7 +95,7 @@ final class PresignedUrlFlowTest extends TestCase
             $components->bucket,
             $components->path,
             $components->expires,
-            $components->signature
+            $components->signature,
         );
 
         self::assertSame(200, $response->getStatusCode());
@@ -345,7 +345,7 @@ final class PresignedUrlFlowTest extends TestCase
             $components->bucket,
             $components->path,
             $components->expires,
-            $components->signature
+            $components->signature,
         );
 
         self::assertSame(200, $response->getStatusCode());
@@ -374,7 +374,7 @@ final class PresignedUrlFlowTest extends TestCase
             $components->bucket,
             $components->path,
             $components->expires,
-            $components->signature
+            $components->signature,
         );
 
         self::assertSame(200, $response->getStatusCode());

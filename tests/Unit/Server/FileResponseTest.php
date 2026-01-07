@@ -156,7 +156,7 @@ final class FileResponseTest extends TestCase
         $response = new FileResponse(
             200,
             ['Content-Type' => 'text/plain'],
-            'Hello World'
+            'Hello World',
         );
 
         ob_start();
