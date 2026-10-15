@@ -96,6 +96,9 @@ readonly class LocalAdapter implements AdapterInterface
             throw new InvalidPathException($path);
         }
 
+        // The realpath cache can outlive a directory swapped for a symlink; drop it so the check sees the current tree.
+        clearstatcache(true);
+
         $normalized = $this->normalizePath($path);
         $fullPath = $this->basePath . DIRECTORY_SEPARATOR . $normalized;
 
@@ -119,7 +122,7 @@ readonly class LocalAdapter implements AdapterInterface
             $realFullPath = realpath($existingPath);
         }
 
-        $basePrefix = $realBasePath === DIRECTORY_SEPARATOR ? $realBasePath : $realBasePath . DIRECTORY_SEPARATOR;
+        $basePrefix = rtrim($realBasePath, '/\\') . DIRECTORY_SEPARATOR;
 
         if ($realFullPath !== $realBasePath && !str_starts_with($realFullPath, $basePrefix)) {
             throw new InvalidPathException($path);

@@ -142,6 +142,53 @@ final class LocalAdapterPathEscapeTest extends TestCase
         self::assertSame('inside content', $this->adapter->read('inside-dir-link/safe.txt'));
     }
 
+    #[Test]
+    public function it_rejects_a_directory_swapped_for_an_outside_symlink_in_the_same_process(): void
+    {
+        mkdir($this->root . '/files/d');
+        file_put_contents($this->root . '/files/d/s.txt', 'inside d');
+        self::assertSame('inside d', $this->adapter->read('d/s.txt'));
+
+        // PHP's own rename()/symlink() flush the realpath cache, so swap the directory from outside the process.
+        if (!function_exists('exec') || !is_executable('/bin/sh')) {
+            $this->markTestSkipped('Running an external command is unavailable.');
+        }
+        exec(sprintf(
+            'mv %s %s && ln -s %s %s',
+            escapeshellarg($this->root . '/files/d'),
+            escapeshellarg($this->root . '/files/d.old'),
+            escapeshellarg($this->root . '/files-old'),
+            escapeshellarg($this->root . '/files/d'),
+        ), $output, $status);
+        if ($status !== 0) {
+            $this->markTestSkipped('Swapping the directory with a symlink failed.');
+        }
+
+        try {
+            $this->adapter->read('d/secret.txt');
+            self::fail('Reading through the swapped symlink should have been rejected.');
+        } catch (InvalidPathException) {
+            self::assertTrue(true);
+        } finally {
+            if (is_link($this->root . '/files/d')) {
+                unlink($this->root . '/files/d');
+            }
+            unlink($this->root . '/files/d.old/s.txt');
+            rmdir($this->root . '/files/d.old');
+        }
+    }
+
+    #[Test]
+    public function it_keeps_working_with_the_filesystem_root_as_base(): void
+    {
+        $rootAdapter = new LocalAdapter('/');
+        $relative = ltrim($this->root . '/files/inside/safe.txt', '/');
+
+        self::assertTrue($rootAdapter->exists($relative));
+        self::assertSame('inside content', $rootAdapter->read($relative));
+        self::assertFalse($rootAdapter->exists('presigned-definitely-missing-' . uniqid()));
+    }
+
     private function createSymlink(string $target, string $link): void
     {
         if (!function_exists('symlink') || !@symlink($target, $link)) {
