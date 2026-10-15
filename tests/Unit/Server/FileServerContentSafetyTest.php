@@ -159,6 +159,10 @@ final class FileServerContentSafetyTest extends TestCase
         yield 'any +xml suffix' => ['blob.dat', 'application/atom+xml'];
         yield 'extension only, safe mime' => ['style.xsl', 'application/octet-stream'];
         yield 'svgz extension' => ['image.svgz', 'application/gzip'];
+        yield 'comma list ending in html' => ['blob.bin', 'text/plain,text/html'];
+        yield 'comma list with params' => ['blob.bin', 'text/plain, text/html;charset=utf-8'];
+        yield 'multipart x-mixed-replace' => ['blob.bin', 'multipart/x-mixed-replace;boundary=x'];
+        yield 'empty content type' => ['blob.bin', ''];
     }
 
     #[Test]
@@ -169,6 +173,26 @@ final class FileServerContentSafetyTest extends TestCase
 
         self::assertSame('attachment; filename="' . $name . '"', $response->getHeader('Content-Disposition'));
         self::assertSame('sandbox', $response->getHeader('Content-Security-Policy'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function safeMimeTypes(): iterable
+    {
+        yield 'pdf' => ['application/pdf'];
+        yield 'plain text with charset' => ['text/plain; charset=utf-8'];
+        yield 'png' => ['image/png'];
+    }
+
+    #[Test]
+    #[DataProvider('safeMimeTypes')]
+    public function it_keeps_single_safe_media_types_inline(string $mimeType): void
+    {
+        $response = $this->serveMemory('blob.bin', $mimeType);
+
+        self::assertSame('inline; filename="blob.bin"', $response->getHeader('Content-Disposition'));
+        self::assertFalse($response->hasHeader('Content-Security-Policy'));
     }
 
     #[Test]
