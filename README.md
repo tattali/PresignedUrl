@@ -37,7 +37,7 @@ use Tattali\PresignedUrl\Factory\StorageFactory;
 
 // Configuration
 $config = new Config(
-    secret: 'your-secret-key',
+    secret: 'change-me-to-a-random-32-byte-secret',
     baseUrl: 'https://cdn.example.com',
 );
 
@@ -129,7 +129,7 @@ use Tattali\PresignedUrl\Config\SecurityConfig;
 use Tattali\PresignedUrl\Config\CompressionConfig;
 
 $config = new Config(
-    secret: 'your-secret-key',
+    secret: 'change-me-to-a-random-32-byte-secret',
     baseUrl: 'https://cdn.example.com',
 
     // Signature configuration

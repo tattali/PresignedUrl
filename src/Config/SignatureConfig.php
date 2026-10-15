@@ -24,7 +24,10 @@ final readonly class SignatureConfig
         public string $expiresParam = 'X-Expires',
         public string $signatureParam = 'X-Signature',
     ) {
-        if (!in_array($algorithm, hash_hmac_algos(), true)) {
+        // hash_hmac() accepts any case, so the check and the digest size use the lowercased name.
+        $normalizedAlgorithm = strtolower($algorithm);
+
+        if (!in_array($normalizedAlgorithm, hash_hmac_algos(), true)) {
             throw InvalidConfigurationException::unknownAlgorithm($algorithm);
         }
 
@@ -32,7 +35,7 @@ final readonly class SignatureConfig
             throw InvalidConfigurationException::signatureLengthTooShort($length, self::MIN_LENGTH);
         }
 
-        $digestSize = strlen(hash_hmac($algorithm, '', '', true));
+        $digestSize = strlen(hash_hmac($normalizedAlgorithm, '', '', true));
         if ($length > $digestSize) {
             throw InvalidConfigurationException::signatureLengthTooLong($length, $algorithm, $digestSize);
         }

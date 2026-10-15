@@ -7,6 +7,7 @@ namespace Tattali\PresignedUrl\Tests\Unit\Signer;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Tattali\PresignedUrl\Config\SignatureConfig;
 use Tattali\PresignedUrl\Exception\InvalidConfigurationException;
 use Tattali\PresignedUrl\Signer\HmacSigner;
 
@@ -94,5 +95,40 @@ final class HmacSignerHardeningTest extends TestCase
         $signer = new HmacSigner(self::SECRET);
 
         self::assertFalse($signer->verify('bucket', 'path/to/file.pdf', 1700000000, $signature));
+    }
+
+    #[Test]
+    public function an_uppercase_algorithm_name_produces_the_same_signature(): void
+    {
+        $lower = new HmacSigner(self::SECRET, new SignatureConfig('sha256'));
+        $upper = new HmacSigner(self::SECRET, new SignatureConfig('SHA256'));
+
+        self::assertSame(
+            $lower->sign('documents', 'a.txt', 1893456000),
+            $upper->sign('documents', 'a.txt', 1893456000),
+        );
+    }
+
+    #[Test]
+    public function a_subclass_overriding_format_signature_verifies_its_own_signatures(): void
+    {
+        $signer = new UppercaseHexSigner(self::SECRET);
+
+        $signature = $signer->sign('documents', 'a.txt', 1893456000);
+
+        self::assertSame(strtoupper($signature), $signature);
+        self::assertTrue($signer->verify('documents', 'a.txt', 1893456000, $signature));
+        self::assertFalse($signer->verify('documents', 'a.txt', 1893456000, strtolower($signature)));
+        self::assertFalse($signer->verify('documents', 'b.txt', 1893456000, $signature));
+        self::assertFalse($signer->verify('documents', 'a.txt', 1893456000, substr($signature, 0, -1)));
+    }
+}
+
+// A named class: anonymous readonly classes need PHP 8.3, and HmacSigner is readonly.
+readonly class UppercaseHexSigner extends HmacSigner
+{
+    protected function formatSignature(string $hash): string
+    {
+        return strtoupper(parent::formatSignature($hash));
     }
 }

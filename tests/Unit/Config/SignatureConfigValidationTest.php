@@ -119,4 +119,13 @@ final class SignatureConfigValidationTest extends TestCase
             self::assertStringNotContainsString($secret, $e->getMessage());
         }
     }
+
+    #[Test]
+    public function it_accepts_an_uppercase_algorithm_name_like_hash_hmac_does(): void
+    {
+        $config = new SignatureConfig('SHA256', 16);
+
+        self::assertSame('SHA256', $config->algorithm);
+        self::assertSame(16, $config->length);
+    }
 }

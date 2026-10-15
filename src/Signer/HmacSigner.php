@@ -39,15 +39,10 @@ readonly class HmacSigner implements SignerInterface
 
     public function verify(string $bucket, string $path, int $expires, string $signature): bool
     {
-        // Reject malformed input before comparing. This only looks at the public expected
-        // length and the caller-supplied value, never at secret-derived bytes.
-        if (strlen($signature) !== $this->config->length * 2 || preg_match('/\A[0-9a-f]+\z/', $signature) !== 1) {
-            return false;
-        }
-
         $expected = $this->sign($bucket, $path, $expires);
 
-        return hash_equals($expected, $signature);
+        // The length of the expected value is public; comparing it first keeps hash_equals() to equal-length strings.
+        return strlen($signature) === strlen($expected) && hash_equals($expected, $signature);
     }
 
     protected function buildSignatureData(string $bucket, string $path, int $expires): string
