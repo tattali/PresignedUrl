@@ -161,15 +161,52 @@ final class FileServerCompressionTest extends TestCase
     }
 
     #[Test]
-    public function head_is_identity_with_vary(): void
+    public function head_describes_the_gzip_representation_when_get_would_gzip(): void
     {
+        $get = $this->get('big.txt', ['Accept-Encoding' => 'gzip']);
         $r = $this->get('big.txt', ['Accept-Encoding' => 'gzip'], 'HEAD');
+
+        self::assertSame(200, $r->getStatusCode());
+        self::assertFalse($r->hasBody());
+        self::assertSame('gzip', $r->getHeader('Content-Encoding'));
+        self::assertFalse($r->hasHeader('Content-Length'));
+        self::assertSame($get->getHeader('ETag'), $r->getHeader('ETag'));
+        self::assertSame('Accept-Encoding', $r->getHeader('Vary'));
+    }
+
+    #[Test]
+    public function head_without_gzip_is_identity_with_vary(): void
+    {
+        $r = $this->get('big.txt', [], 'HEAD');
 
         self::assertSame(200, $r->getStatusCode());
         self::assertFalse($r->hasBody());
         self::assertNull($r->getHeader('Content-Encoding'));
         self::assertSame((string) strlen($this->content), $r->getHeader('Content-Length'));
         self::assertSame('Accept-Encoding', $r->getHeader('Vary'));
+    }
+
+    #[Test]
+    public function not_modified_for_gzip_has_no_identity_content_length(): void
+    {
+        $etag = $this->get('big.txt', ['Accept-Encoding' => 'gzip'])->getHeader('ETag') ?? '';
+
+        $r = $this->get('big.txt', ['Accept-Encoding' => 'gzip', 'If-None-Match' => $etag]);
+
+        self::assertSame(304, $r->getStatusCode());
+        self::assertFalse($r->hasHeader('Content-Length'));
+        self::assertSame($etag, $r->getHeader('ETag'));
+    }
+
+    #[Test]
+    public function not_modified_for_identity_keeps_content_length(): void
+    {
+        $identity = $this->get('big.txt');
+
+        $r = $this->get('big.txt', ['If-None-Match' => $identity->getHeader('ETag') ?? '']);
+
+        self::assertSame(304, $r->getStatusCode());
+        self::assertSame((string) strlen($this->content), $r->getHeader('Content-Length'));
     }
 
     #[Test]

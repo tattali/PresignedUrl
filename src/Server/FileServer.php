@@ -196,16 +196,23 @@ readonly class FileServer implements FileServerInterface
             $responseHeaders['Vary'] = 'Accept-Encoding';
         }
 
-        if ($this->isNotModified($headers, $gzip ? $etag . self::GZIP_ETAG_SUFFIX : $etag, $lastModified)) {
+        $notModified = $this->isNotModified($headers, $gzip ? $etag . self::GZIP_ETAG_SUFFIX : $etag, $lastModified);
+
+        if ($notModified || $method === 'HEAD') {
             if ($gzip) {
+                // The compressed size is unknown without compressing, so no Content-Length is sent.
                 $responseHeaders['ETag'] = '"' . $etag . self::GZIP_ETAG_SUFFIX . '"';
+                unset($responseHeaders['Content-Length']);
             }
 
-            return new FileResponse(304, $responseHeaders);
-        }
+            if ($notModified) {
+                return new FileResponse(304, $responseHeaders);
+            }
 
-        // HEAD always describes the identity representation (no Content-Encoding, identity Content-Length).
-        if ($method === 'HEAD') {
+            if ($gzip) {
+                $responseHeaders['Content-Encoding'] = 'gzip';
+            }
+
             return new FileResponse(200, $responseHeaders);
         }
 
