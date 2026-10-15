@@ -279,7 +279,7 @@ readonly class FileServer implements FileServerInterface
         }
 
         // Browsers split on commas and the last valid type wins, so anything but one type/subtype token is suspect.
-        if (preg_match('#^[a-z0-9!$&^_.+-]+/[a-z0-9!$&^_.+-]+$#', $mediaType) !== 1) {
+        if (preg_match('~^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$~', $mediaType) !== 1) {
             return true;
         }
 
