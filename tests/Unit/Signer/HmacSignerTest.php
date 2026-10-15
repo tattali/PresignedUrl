@@ -15,7 +15,7 @@ final class HmacSignerTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->signer = new HmacSigner('test-secret');
+        $this->signer = new HmacSigner('test-secret-0123456789abcdef0123456789');
     }
 
     #[Test]
@@ -87,11 +87,11 @@ final class HmacSignerTest extends TestCase
     #[Test]
     public function it_respects_custom_signature_length(): void
     {
-        $config = new SignatureConfig(length: 8);
-        $signer = new HmacSigner('test-secret', $config);
+        $config = new SignatureConfig(length: 24);
+        $signer = new HmacSigner('test-secret-0123456789abcdef0123456789', $config);
 
         $signature = $signer->sign('bucket', 'path/to/file.pdf', 1700000000);
 
-        self::assertSame(16, strlen($signature));
+        self::assertSame(48, strlen($signature));
     }
 }

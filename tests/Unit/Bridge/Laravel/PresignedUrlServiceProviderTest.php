@@ -33,7 +33,7 @@ final class PresignedUrlServiceProviderTest extends TestCase
         $this->app->singleton('config', function () {
             return new Repository([
                 'presigned-url' => [
-                    'secret' => 'test-secret-key',
+                    'secret' => 'test-secret-key-0123456789abcdef0123456789',
                     'base_url' => 'https://cdn.example.com',
                     'signature' => [
                         'algorithm' => 'sha256',
@@ -81,7 +81,7 @@ final class PresignedUrlServiceProviderTest extends TestCase
         $config = $this->app->make(Config::class);
 
         self::assertInstanceOf(Config::class, $config);
-        self::assertSame('test-secret-key', $config->secret);
+        self::assertSame('test-secret-key-0123456789abcdef0123456789', $config->secret);
         self::assertSame('https://cdn.example.com', $config->baseUrl);
     }
 
