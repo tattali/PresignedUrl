@@ -22,7 +22,7 @@ final class StorageTest extends TestCase
     protected function setUp(): void
     {
         $this->config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
@@ -101,7 +101,7 @@ final class StorageTest extends TestCase
     public function it_respects_max_ttl(): void
     {
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 

@@ -29,7 +29,7 @@ final class FileServerTest extends TestCase
         mkdir($this->tempDir, 0755, true);
 
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
@@ -193,7 +193,7 @@ final class FileServerTest extends TestCase
         file_put_contents($this->tempDir . '/test.txt', 'Hello World');
 
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
             security: new SecurityConfig(allowedOrigins: ['https://example.com']),
         );
@@ -221,7 +221,7 @@ final class FileServerTest extends TestCase
         file_put_contents($this->tempDir . '/test.txt', 'Hello World');
 
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
@@ -252,7 +252,7 @@ final class FileServerTest extends TestCase
         file_put_contents($this->tempDir . '/test.txt', 'Hello World');
 
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
@@ -280,7 +280,7 @@ final class FileServerTest extends TestCase
         file_put_contents($this->tempDir . '/test.txt', 'Hello World');
 
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
@@ -365,7 +365,7 @@ final class FileServerTest extends TestCase
     public function it_logs_file_not_found(): void
     {
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
@@ -517,7 +517,7 @@ final class FileServerTest extends TestCase
         file_put_contents($this->tempDir . '/test.txt', 'Hello World');
 
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
             security: new SecurityConfig(allowedOrigins: ['https://example.com']),
         );
@@ -585,7 +585,7 @@ final class FileServerTest extends TestCase
         $servingConfig = new ServingConfig(compression: $compressionConfig);
 
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
             serving: $servingConfig,
         );
@@ -610,7 +610,7 @@ final class FileServerTest extends TestCase
         file_put_contents($this->tempDir . '/large.txt', str_repeat('x', 1000));
 
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
             security: new SecurityConfig(maxFileSize: 100),
         );
@@ -635,7 +635,7 @@ final class FileServerTest extends TestCase
         file_put_contents($this->tempDir . '/script.exe', 'binary');
 
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
             security: new SecurityConfig(blockedExtensions: ['exe']),
         );
@@ -674,7 +674,7 @@ final class FileServerTest extends TestCase
         $servingConfig = new ServingConfig(compression: $compressionConfig);
 
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
             serving: $servingConfig,
         );

@@ -18,11 +18,11 @@ final class ConfigTest extends TestCase
     public function it_creates_config_with_defaults(): void
     {
         $config = new Config(
-            secret: 'my-secret',
+            secret: 'my-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
-        self::assertSame('my-secret', $config->secret);
+        self::assertSame('my-secret-0123456789abcdef0123456789', $config->secret);
         self::assertSame('https://cdn.example.com', $config->baseUrl);
         self::assertInstanceOf(SignatureConfig::class, $config->signature);
         self::assertInstanceOf(ServingConfig::class, $config->serving);
@@ -38,7 +38,7 @@ final class ConfigTest extends TestCase
         $security = new SecurityConfig(allowedExtensions: ['pdf']);
 
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
             signature: $signature,
             serving: $serving,
@@ -54,7 +54,7 @@ final class ConfigTest extends TestCase
     public function it_adds_bucket_with_immutable_method(): void
     {
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
@@ -75,7 +75,7 @@ final class ConfigTest extends TestCase
         $bucket2 = new BucketConfig(adapter: 'local', options: ['path' => '/tmp/documents']);
 
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
             buckets: ['images' => $bucket1],
         );
@@ -94,7 +94,7 @@ final class ConfigTest extends TestCase
         $bucket2 = new BucketConfig(adapter: 'local', options: ['path' => '/tmp/new']);
 
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
             buckets: ['files' => $bucket1],
         );
@@ -113,7 +113,7 @@ final class ConfigTest extends TestCase
         $security = new SecurityConfig(maxFileSize: 1000000);
 
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.test.com',
             signature: $signature,
             serving: $serving,
@@ -123,7 +123,7 @@ final class ConfigTest extends TestCase
         $bucket = new BucketConfig(adapter: 'local', options: ['path' => '/tmp']);
         $newConfig = $config->withBucket('test', $bucket);
 
-        self::assertSame('test-secret', $newConfig->secret);
+        self::assertSame('test-secret-0123456789abcdef0123456789', $newConfig->secret);
         self::assertSame('https://cdn.test.com', $newConfig->baseUrl);
         self::assertSame($signature, $newConfig->signature);
         self::assertSame($serving, $newConfig->serving);

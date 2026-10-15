@@ -23,7 +23,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_registers_core_services(): void
     {
         $container = $this->createContainer([
-            'secret' => 'test-secret',
+            'secret' => 'test-secret-0123456789abcdef0123456789',
             'base_url' => 'https://cdn.example.com',
         ]);
 
@@ -37,7 +37,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_registers_aliased_services(): void
     {
         $container = $this->createContainer([
-            'secret' => 'test-secret',
+            'secret' => 'test-secret-0123456789abcdef0123456789',
             'base_url' => 'https://cdn.example.com',
         ]);
 
@@ -51,7 +51,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_registers_serve_controller(): void
     {
         $container = $this->createContainer([
-            'secret' => 'test-secret',
+            'secret' => 'test-secret-0123456789abcdef0123456789',
             'base_url' => 'https://cdn.example.com',
         ]);
 
@@ -65,7 +65,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_creates_config_with_defaults(): void
     {
         $container = $this->createContainer([
-            'secret' => 'my-secret',
+            'secret' => 'my-secret-0123456789abcdef0123456789',
             'base_url' => 'https://example.com',
         ]);
 
@@ -75,7 +75,7 @@ final class PresignedUrlExtensionTest extends TestCase
         /** @var Config $config */
         $config = $container->get(Config::class);
 
-        self::assertSame('my-secret', $config->secret);
+        self::assertSame('my-secret-0123456789abcdef0123456789', $config->secret);
         self::assertSame('https://example.com', $config->baseUrl);
         self::assertSame('sha256', $config->signature->algorithm);
         self::assertSame(16, $config->signature->length);
@@ -86,7 +86,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_creates_config_with_custom_signature_settings(): void
     {
         $container = $this->createContainer([
-            'secret' => 'my-secret',
+            'secret' => 'my-secret-0123456789abcdef0123456789',
             'base_url' => 'https://example.com',
             'signature' => [
                 'algorithm' => 'sha512',
@@ -112,7 +112,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_creates_config_with_custom_serving_settings(): void
     {
         $container = $this->createContainer([
-            'secret' => 'my-secret',
+            'secret' => 'my-secret-0123456789abcdef0123456789',
             'base_url' => 'https://example.com',
             'serving' => [
                 'default_ttl' => 7200,
@@ -138,7 +138,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_creates_config_with_security_settings(): void
     {
         $container = $this->createContainer([
-            'secret' => 'my-secret',
+            'secret' => 'my-secret-0123456789abcdef0123456789',
             'base_url' => 'https://example.com',
             'security' => [
                 'allowed_extensions' => ['pdf', 'jpg'],
@@ -163,7 +163,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_creates_config_with_compression_settings(): void
     {
         $container = $this->createContainer([
-            'secret' => 'my-secret',
+            'secret' => 'my-secret-0123456789abcdef0123456789',
             'base_url' => 'https://example.com',
             'serving' => [
                 'compression' => [
@@ -190,7 +190,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_creates_signer_service(): void
     {
         $container = $this->createContainer([
-            'secret' => 'signer-test-secret',
+            'secret' => 'signer-test-secret-0123456789abcdef0123456789',
             'base_url' => 'https://example.com',
         ]);
 
@@ -209,7 +209,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_creates_storage_service(): void
     {
         $container = $this->createContainer([
-            'secret' => 'storage-test',
+            'secret' => 'storage-test-0123456789abcdef0123456789',
             'base_url' => 'https://cdn.example.com',
         ]);
 
@@ -225,7 +225,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_creates_file_server_service(): void
     {
         $container = $this->createContainer([
-            'secret' => 'server-test',
+            'secret' => 'server-test-0123456789abcdef0123456789',
             'base_url' => 'https://cdn.example.com',
         ]);
 
@@ -245,7 +245,7 @@ final class PresignedUrlExtensionTest extends TestCase
 
         try {
             $container = $this->createContainer([
-                'secret' => 'bucket-test',
+                'secret' => 'bucket-test-0123456789abcdef0123456789',
                 'base_url' => 'https://cdn.example.com',
                 'buckets' => [
                     'documents' => [
@@ -279,7 +279,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_registers_s3_bucket(): void
     {
         $container = $this->createContainer([
-            'secret' => 's3-test',
+            'secret' => 's3-test-0123456789abcdef0123456789',
             'base_url' => 'https://cdn.example.com',
             'buckets' => [
                 's3bucket' => [
@@ -299,7 +299,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_registers_s3_bucket_with_endpoint(): void
     {
         $container = $this->createContainer([
-            'secret' => 's3-endpoint-test',
+            'secret' => 's3-endpoint-test-0123456789abcdef0123456789',
             'base_url' => 'https://cdn.example.com',
             'buckets' => [
                 'minio' => [
@@ -320,7 +320,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_registers_flysystem_bucket(): void
     {
         $container = $this->createContainer([
-            'secret' => 'flysystem-test',
+            'secret' => 'flysystem-test-0123456789abcdef0123456789',
             'base_url' => 'https://cdn.example.com',
             'buckets' => [
                 'flybucket' => [
@@ -337,7 +337,7 @@ final class PresignedUrlExtensionTest extends TestCase
     public function it_registers_custom_adapter_as_reference(): void
     {
         $container = $this->createContainer([
-            'secret' => 'custom-test',
+            'secret' => 'custom-test-0123456789abcdef0123456789',
             'base_url' => 'https://cdn.example.com',
             'buckets' => [
                 'custom' => [
