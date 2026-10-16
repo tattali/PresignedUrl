@@ -108,6 +108,7 @@ class PresignedUrlServiceProvider extends ServiceProvider
             cacheControl: $config['serving']['cache_control'] ?? 'private, max-age=3600, must-revalidate',
             contentDisposition: $config['serving']['content_disposition'] ?? 'inline',
             compression: $compressionConfig,
+            allowUnsafeInline: $config['serving']['allow_unsafe_inline'] ?? false,
         );
 
         $securityConfig = new SecurityConfig(

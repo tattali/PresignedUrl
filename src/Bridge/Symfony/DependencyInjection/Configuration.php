@@ -40,6 +40,7 @@ final class Configuration implements ConfigurationInterface
                         ->integerNode('max_ttl')->defaultValue(86400)->end()
                         ->scalarNode('cache_control')->defaultValue('private, max-age=3600, must-revalidate')->end()
                         ->scalarNode('content_disposition')->defaultValue('inline')->end()
+                        ->booleanNode('allow_unsafe_inline')->defaultFalse()->end()
                         ->arrayNode('compression')
                             ->addDefaultsIfNotSet()
                             ->children()

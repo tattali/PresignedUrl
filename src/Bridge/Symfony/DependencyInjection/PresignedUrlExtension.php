@@ -72,6 +72,7 @@ final class PresignedUrlExtension extends Extension
             $config['serving']['cache_control'] ?? 'private, max-age=3600, must-revalidate',
             $config['serving']['content_disposition'] ?? 'inline',
             $compressionConfig,
+            $config['serving']['allow_unsafe_inline'] ?? false,
         ]);
 
         $securityConfig = new Definition(SecurityConfig::class, [
