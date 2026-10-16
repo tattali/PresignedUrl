@@ -1,0 +1,31 @@
+{
+    "$schema": "vendor/infection/infection/resources/schema.json",
+    // Signing (Signer), URL building and parsing (Storage) and request verification (Server).
+    "source": {
+        "directories": [
+            "src/Signer",
+            "src/Storage",
+            "src/Server"
+        ]
+    },
+    "logs": {
+        "text": "build/infection/infection.log",
+        "summary": "build/infection/summary.log"
+    },
+    "tmpDir": "build/infection/tmp",
+    "minMsi": 85,
+    "minCoveredMsi": 85,
+    // A mutant that only triggers a PHP warning (for example an undefined array key) counts as killed.
+    "testFrameworkOptions": "--fail-on-warning",
+    "mutators": {
+        "@default": true,
+        // Classes are open for extension: protected to private changes no observable behaviour.
+        "ProtectedVisibility": false,
+        "CastString": {
+            "ignore": [
+                // parse_str() only yields strings or arrays and arrays are rejected just before, so the cast is a no-op.
+                "Tattali\\PresignedUrl\\Storage\\Storage::parseUrl"
+            ]
+        }
+    }
+}

@@ -425,6 +425,14 @@ composer install
 vendor/bin/phpunit
 ```
 
+## Mutation Testing
+
+[Infection](https://infection.github.io/) mutates the signing, URL and verification code (`src/Signer`, `src/Storage`, `src/Server`) and checks that the tests catch each change. It needs a coverage driver (PCOV or Xdebug).
+
+```bash
+vendor/bin/infection --threads=max
+```
+
 ## Static Analysis
 
 ```bash

@@ -94,4 +94,62 @@ final class HmacSignerTest extends TestCase
 
         self::assertSame(16, strlen($signature));
     }
+
+    #[Test]
+    public function it_signs_bucket_path_and_expiry_with_hmac_sha256_by_default(): void
+    {
+        // hash_hmac('sha256', 'bucket:path/to/file.pdf:1700000000', 'test-secret'), first 16 bytes as hex
+        self::assertSame(
+            '6ea9ac5fe047431cd710358766a4bc73',
+            $this->signer->sign('bucket', 'path/to/file.pdf', 1700000000),
+        );
+    }
+
+    #[Test]
+    public function it_uses_the_configured_algorithm(): void
+    {
+        $signer = new HmacSigner('test-secret', new SignatureConfig(algorithm: 'sha512', length: 64));
+
+        self::assertSame(
+            '7b3b79258e3a3f6f0309fb6b97fe137590e59281574f4e40ee4212d3a2488c19'
+            . 'd865d0b1a2fde2899d2ca5ca142b3ea68a025b8e40626fe5becbc397e894f914',
+            $signer->sign('bucket', 'path/to/file.pdf', 1700000000),
+        );
+    }
+
+    #[Test]
+    public function it_returns_the_full_hash_when_length_exceeds_the_digest_size(): void
+    {
+        $signer = new HmacSigner('test-secret', new SignatureConfig(length: 1000));
+
+        self::assertSame(
+            '6ea9ac5fe047431cd710358766a4bc732f38c4090b59bfe3c756c2055822b09b',
+            $signer->sign('bucket', 'path/to/file.pdf', 1700000000),
+        );
+    }
+
+    #[Test]
+    public function it_rejects_tampered_expiry(): void
+    {
+        $signature = $this->signer->sign('bucket', 'path/to/file.pdf', 1700000000);
+
+        self::assertFalse($this->signer->verify('bucket', 'path/to/file.pdf', 1700003600, $signature));
+    }
+
+    #[Test]
+    public function it_rejects_a_signature_made_with_another_secret(): void
+    {
+        $other = new HmacSigner('other-secret');
+        $signature = $other->sign('bucket', 'path/to/file.pdf', 1700000000);
+
+        self::assertFalse($this->signer->verify('bucket', 'path/to/file.pdf', 1700000000, $signature));
+    }
+
+    #[Test]
+    public function it_rejects_a_truncated_signature(): void
+    {
+        $signature = $this->signer->sign('bucket', 'path/to/file.pdf', 1700000000);
+
+        self::assertFalse($this->signer->verify('bucket', 'path/to/file.pdf', 1700000000, substr($signature, 0, -1)));
+    }
 }
