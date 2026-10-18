@@ -274,11 +274,16 @@ readonly class FileServer implements FileServerInterface
             'Last-Modified' => gmdate('D, d M Y H:i:s', $lastModified) . ' GMT',
             'Cache-Control' => $this->config->serving->cacheControl,
             'Accept-Ranges' => 'bytes',
+            'X-Content-Type-Options' => 'nosniff',
         ];
 
-        $filename = basename($path);
         $disposition = $this->config->serving->contentDisposition;
-        $headers['Content-Disposition'] = sprintf('%s; filename="%s"', $disposition, $filename);
+        if (!$this->config->serving->allowUnsafeInline && $this->isScriptableContent($path, $mimeType)) {
+            $disposition = 'attachment';
+            $headers['Content-Security-Policy'] = 'sandbox';
+        }
+
+        $headers['Content-Disposition'] = ContentDisposition::format($disposition, basename($path));
 
         $origin = $requestHeaders['Origin'] ?? $requestHeaders['origin'] ?? null;
         if ($origin !== null && $this->config->security->isOriginAllowed($origin)) {
@@ -289,6 +294,41 @@ readonly class FileServer implements FileServerInterface
         }
 
         return $headers;
+    }
+
+    /**
+     * Tells whether a browser could run script from the file when it is displayed inline.
+     */
+    protected function isScriptableContent(string $path, string $mimeType): bool
+    {
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (in_array($extension, ['html', 'htm', 'xhtml', 'svg', 'svgz', 'xml', 'xsl', 'js', 'mjs'], true)) {
+            return true;
+        }
+
+        $mediaType = strtolower(trim(explode(';', $mimeType, 2)[0]));
+        if (str_ends_with($mediaType, '+xml') || str_starts_with($mediaType, 'multipart/')) {
+            return true;
+        }
+
+        // Browsers split on commas and the last valid type wins, so anything but one type/subtype token is suspect.
+        if (preg_match('~^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$~', $mediaType) !== 1) {
+            return true;
+        }
+
+        return in_array($mediaType, [
+            'text/html',
+            'application/xhtml+xml',
+            'image/svg+xml',
+            'text/xml',
+            'application/xml',
+            'text/xsl',
+            'text/javascript',
+            'application/javascript',
+            'application/x-javascript',
+            'application/ecmascript',
+            'text/ecmascript',
+        ], true);
     }
 
     /**
