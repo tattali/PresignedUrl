@@ -4,9 +4,10 @@
 
 | Version | Supported |
 |---------|-----------|
-| 1.0.x   | Yes       |
+| 1.1.x   | Yes       |
+| 1.0.x   | No        |
 
-Earlier versions were never released.
+1.0.x has security issues that are fixed in 1.1.0. Upgrade to 1.1.
 
 ## Reporting a vulnerability
 
