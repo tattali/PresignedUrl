@@ -492,7 +492,7 @@ readonly class FileServer implements FileServerInterface
     {
         $value = null;
         foreach ($requestHeaders as $name => $v) {
-            if (strtolower((string) $name) === 'accept-encoding') {
+            if (strtolower($name) === 'accept-encoding') {
                 $value = $v;
                 break;
             }
