@@ -1,7 +1,10 @@
 parameters:
-    level: 9
+    level: max
+    phpVersion: 80200
     paths:
         - src
-    excludePaths:
-        - src/Bridge/Symfony/*
-        - src/Bridge/Laravel/*
+        - tests
+    stubFiles:
+        - tests/stubs/laravel-helpers.stub
+    scanFiles:
+        - tests/stubs/laravel-helpers.stub
