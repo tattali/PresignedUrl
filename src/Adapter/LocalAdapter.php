@@ -12,6 +12,7 @@ readonly class LocalAdapter implements AdapterInterface
 {
     /**
      * Types finfo reports when it cannot tell what a file is; the extension is more reliable then.
+     * Every text/x-* result (libmagic's unregistered source-code guesses) is generic too.
      */
     protected const GENERIC_MIME_TYPES = [
         'text/plain',
@@ -101,13 +102,13 @@ readonly class LocalAdapter implements AdapterInterface
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mimeType = $finfo->file($fullPath);
 
-        if ($mimeType !== false && !in_array($mimeType, self::GENERIC_MIME_TYPES, true)) {
+        if ($mimeType !== false && !$this->isGenericMimeType($mimeType)) {
             return $mimeType;
         }
 
         $extension = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
 
-        return self::EXTENSION_MIME_TYPES[$extension] ?? ($mimeType !== false ? $mimeType : 'application/octet-stream');
+        return static::EXTENSION_MIME_TYPES[$extension] ?? ($mimeType !== false ? $mimeType : 'application/octet-stream');
     }
 
     public function lastModified(string $path): int
@@ -128,6 +129,11 @@ readonly class LocalAdapter implements AdapterInterface
     public function nativePresignedUrl(string $path, int $expires): ?string
     {
         return null;
+    }
+
+    protected function isGenericMimeType(string $mimeType): bool
+    {
+        return in_array($mimeType, static::GENERIC_MIME_TYPES, true) || str_starts_with($mimeType, 'text/x-');
     }
 
     protected function resolvePath(string $path): string

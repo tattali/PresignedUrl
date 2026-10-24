@@ -39,6 +39,7 @@ final class LocalAdapterMimeTypeTest extends TestCase
     public static function extensionFallbackProvider(): iterable
     {
         yield 'js' => ['app.js', 'function f() { return 1; }', 'text/javascript'];
+        yield 'js that libmagic takes for C++' => ['app-class.js', "class A {\n  constructor() { this.x = 1; }\n}\n", 'text/javascript'];
         yield 'mjs' => ['app.mjs', "const a = 1;\n", 'text/javascript'];
         yield 'upper-case extension' => ['APP.JS', 'function f() { return 1; }', 'text/javascript'];
         yield 'css' => ['site.css', 'body { color: red; }', 'text/css'];
@@ -63,6 +64,14 @@ final class LocalAdapterMimeTypeTest extends TestCase
         file_put_contents($this->tempDir . '/notes.unknownext', 'plain words');
 
         self::assertSame('text/plain', $this->adapter->mimeType('notes.unknownext'));
+    }
+
+    #[Test]
+    public function it_keeps_the_detected_guess_for_an_unknown_extension(): void
+    {
+        file_put_contents($this->tempDir . '/shape.unknownext', "class A {\n  constructor() { this.x = 1; }\n}\n");
+
+        self::assertSame('text/x-c++', $this->adapter->mimeType('shape.unknownext'));
     }
 
     #[Test]
