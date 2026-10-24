@@ -26,21 +26,46 @@ use Tattali\PresignedUrl\Signer\SignerInterface;
 use Tattali\PresignedUrl\Storage\Storage;
 use Tattali\PresignedUrl\Storage\StorageInterface;
 
+/**
+ * @phpstan-type BucketConfig array{
+ *     adapter: string,
+ *     path: string|null,
+ *     service: string,
+ *     key: string|null,
+ *     secret: string|null,
+ *     bucket: string|null,
+ *     region: string|null,
+ *     endpoint: string|null,
+ * }
+ * @phpstan-type PresignedUrlConfig array{
+ *     secret: string,
+ *     base_url: string,
+ *     signature?: array{algorithm?: string, length?: int, expires_param?: string, signature_param?: string},
+ *     serving?: array{
+ *         default_ttl?: int,
+ *         max_ttl?: int,
+ *         cache_control?: string,
+ *         content_disposition?: string,
+ *         allow_unsafe_inline?: bool,
+ *         compression?: array{enabled?: bool, min_size?: int, level?: int, types?: list<string>},
+ *     },
+ *     security?: array{allowed_extensions?: list<string>, blocked_extensions?: list<string>, max_file_size?: int, allowed_origins?: list<string>},
+ *     buckets?: array<string, BucketConfig>,
+ * }
+ */
 final class PresignedUrlExtension extends Extension
 {
-    /**
-     * @param array<string, mixed> $configs
-     */
     public function load(array $configs, ContainerBuilder $container): void
     {
         $configuration = new Configuration();
+        /** @var PresignedUrlConfig $config The Configuration tree guarantees this shape. */
         $config = $this->processConfiguration($configuration, $configs);
 
         $this->registerServices($config, $container);
     }
 
     /**
-     * @param array<string, mixed> $config
+     * @param PresignedUrlConfig $config
      */
     public function loadFromConfig(array $config, ContainerConfigurator $containerConfigurator, ContainerBuilder $container): void
     {
@@ -48,7 +73,7 @@ final class PresignedUrlExtension extends Extension
     }
 
     /**
-     * @param array<string, mixed> $config
+     * @param PresignedUrlConfig $config
      */
     private function registerServices(array $config, ContainerBuilder $container): void
     {
@@ -127,7 +152,7 @@ final class PresignedUrlExtension extends Extension
     }
 
     /**
-     * @param array<string, array<string, mixed>> $buckets
+     * @param array<string, BucketConfig> $buckets
      */
     private function registerBuckets(array $buckets, ContainerBuilder $container): void
     {

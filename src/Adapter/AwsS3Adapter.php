@@ -24,7 +24,7 @@ readonly class AwsS3Adapter implements AdapterInterface
      *     secret: string,
      *     region: string,
      *     bucket: string,
-     *     endpoint?: string,
+     *     endpoint?: string|null,
      *     use_path_style_endpoint?: bool,
      *     version?: string,
      * } $config

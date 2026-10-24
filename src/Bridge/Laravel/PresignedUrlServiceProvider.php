@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Tattali\PresignedUrl\Bridge\Laravel;
 
+use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
+use League\Flysystem\FilesystemOperator;
 use Psr\Log\LoggerInterface;
 use Tattali\PresignedUrl\Adapter\AwsS3Adapter;
 use Tattali\PresignedUrl\Adapter\FlysystemAdapter;
@@ -22,6 +24,24 @@ use Tattali\PresignedUrl\Signer\SignerInterface;
 use Tattali\PresignedUrl\Storage\Storage;
 use Tattali\PresignedUrl\Storage\StorageInterface;
 
+/**
+ * @phpstan-type BucketConfig array<string, string>
+ * @phpstan-type PresignedUrlConfig array{
+ *     secret: string,
+ *     base_url: string,
+ *     signature?: array{algorithm?: string, length?: int, expires_param?: string, signature_param?: string},
+ *     serving?: array{
+ *         default_ttl?: int,
+ *         max_ttl?: int,
+ *         cache_control?: string,
+ *         content_disposition?: string,
+ *         allow_unsafe_inline?: bool,
+ *         compression?: array{enabled?: bool, min_size?: int, level?: int, types?: list<string>},
+ *     },
+ *     security?: array{allowed_extensions?: list<string>, blocked_extensions?: list<string>, max_file_size?: int, allowed_origins?: list<string>},
+ *     buckets?: array<string, BucketConfig>,
+ * }
+ */
 class PresignedUrlServiceProvider extends ServiceProvider
 {
     public function register(): void
@@ -32,8 +52,10 @@ class PresignedUrlServiceProvider extends ServiceProvider
         );
 
         $this->app->singleton(Config::class, function (Application $app): Config {
-            /** @var array<string, mixed> $config */
-            $config = $app['config']['presigned-url'];
+            /** @var Repository $repository */
+            $repository = $app->make('config');
+            /** @var PresignedUrlConfig $config */
+            $config = $repository->get('presigned-url');
 
             return $this->buildConfig($config);
         });
@@ -49,8 +71,14 @@ class PresignedUrlServiceProvider extends ServiceProvider
             $signer = $app->make(SignerInterface::class);
             $storage = new Storage($config, $signer);
 
-            /** @var array<string, array<string, mixed>> $buckets */
-            $buckets = $app['config']['presigned-url.buckets'] ?? [];
+            $buckets = [];
+
+            if ($app->bound('config')) {
+                /** @var Repository $repository */
+                $repository = $app->make('config');
+                /** @var array<string, BucketConfig> $buckets */
+                $buckets = $repository->get('presigned-url.buckets') ?? [];
+            }
 
             foreach ($buckets as $name => $bucketConfig) {
                 $adapter = $this->createAdapter($app, $bucketConfig);
@@ -84,7 +112,7 @@ class PresignedUrlServiceProvider extends ServiceProvider
     }
 
     /**
-     * @param array<string, mixed> $config
+     * @param PresignedUrlConfig $config
      */
     protected function buildConfig(array $config): Config
     {
@@ -129,7 +157,7 @@ class PresignedUrlServiceProvider extends ServiceProvider
 
     /**
      * @param Application|\Illuminate\Contracts\Container\Container $app
-     * @param array<string, mixed> $bucketConfig
+     * @param BucketConfig $bucketConfig
      */
     protected function createAdapter(mixed $app, array $bucketConfig): LocalAdapter|FlysystemAdapter|AwsS3Adapter
     {
@@ -137,7 +165,7 @@ class PresignedUrlServiceProvider extends ServiceProvider
 
         return match ($adapter) {
             'local' => new LocalAdapter($bucketConfig['path']),
-            'flysystem' => new FlysystemAdapter($app->make($bucketConfig['service'])),
+            'flysystem' => new FlysystemAdapter($this->makeFilesystem($app, $bucketConfig['service'])),
             's3' => AwsS3Adapter::fromConfig([
                 'key' => $bucketConfig['key'],
                 'secret' => $bucketConfig['secret'],
@@ -145,7 +173,29 @@ class PresignedUrlServiceProvider extends ServiceProvider
                 'region' => $bucketConfig['region'],
                 'endpoint' => $bucketConfig['endpoint'] ?? null,
             ]),
-            default => $app->make($adapter),
+            default => $this->makeAdapter($app, $adapter),
         };
+    }
+
+    /**
+     * @param Application|\Illuminate\Contracts\Container\Container $app
+     */
+    private function makeFilesystem(mixed $app, string $service): FilesystemOperator
+    {
+        /** @var FilesystemOperator $filesystem FlysystemAdapter's constructor enforces this type. */
+        $filesystem = $app->make($service);
+
+        return $filesystem;
+    }
+
+    /**
+     * @param Application|\Illuminate\Contracts\Container\Container $app
+     */
+    private function makeAdapter(mixed $app, string $adapter): LocalAdapter|FlysystemAdapter|AwsS3Adapter
+    {
+        /** @var AwsS3Adapter|FlysystemAdapter|LocalAdapter $instance The return type enforces this type. */
+        $instance = $app->make($adapter);
+
+        return $instance;
     }
 }
