@@ -27,7 +27,7 @@ final class ServeControllerTest extends TestCase
         $fileServer = $this->createMock(FileServerInterface::class);
         $fileServer->expects($this->once())
             ->method('serve')
-            ->with('documents', 'test.txt', 1234567890, 'abc123', 'GET', $this->isType('array'))
+            ->with('documents', 'test.txt', 1234567890, 'abc123', 'GET', self::callback(static fn(mixed $headers): bool => is_array($headers)))
             ->willReturn($fileResponse);
 
         $request = $this->createRequest('GET', [
@@ -47,6 +47,7 @@ final class ServeControllerTest extends TestCase
     public function it_serves_file_with_stream_body(): void
     {
         $stream = fopen('php://memory', 'rb+');
+        self::assertIsResource($stream);
         fwrite($stream, 'Stream content');
         rewind($stream);
 
@@ -242,7 +243,7 @@ final class ServeControllerTest extends TestCase
         $fileServer = $this->createMock(FileServerInterface::class);
         $fileServer->expects($this->once())
             ->method('serve')
-            ->with('bucket', 'file.txt', 0, '', 'GET', $this->isType('array'))
+            ->with('bucket', 'file.txt', 0, '', 'GET', self::callback(static fn(mixed $headers): bool => is_array($headers)))
             ->willReturn($fileResponse);
 
         $request = $this->createRequest('GET', []);

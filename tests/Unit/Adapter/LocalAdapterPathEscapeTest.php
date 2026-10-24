@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tattali\PresignedUrl\Tests\Unit\Adapter;
 
+use Closure;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -42,26 +43,32 @@ final class LocalAdapterPathEscapeTest extends TestCase
         rmdir($this->root);
     }
 
+    /**
+     * @return array<string, array{Closure(LocalAdapter, string): mixed}>
+     */
     public static function fileOperations(): array
     {
         return [
-            'read' => ['read'],
-            'readStream' => ['readStream'],
-            'exists' => ['exists'],
-            'size' => ['size'],
-            'mimeType' => ['mimeType'],
-            'lastModified' => ['lastModified'],
+            'read' => [static fn(LocalAdapter $adapter, string $path): mixed => $adapter->read($path)],
+            'readStream' => [static fn(LocalAdapter $adapter, string $path): mixed => $adapter->readStream($path)],
+            'exists' => [static fn(LocalAdapter $adapter, string $path): mixed => $adapter->exists($path)],
+            'size' => [static fn(LocalAdapter $adapter, string $path): mixed => $adapter->size($path)],
+            'mimeType' => [static fn(LocalAdapter $adapter, string $path): mixed => $adapter->mimeType($path)],
+            'lastModified' => [static fn(LocalAdapter $adapter, string $path): mixed => $adapter->lastModified($path)],
         ];
     }
 
+    /**
+     * @param Closure(LocalAdapter, string): mixed $operation
+     */
     #[Test]
     #[DataProvider('fileOperations')]
-    public function it_rejects_a_file_symlink_to_an_outside_file(string $operation): void
+    public function it_rejects_a_file_symlink_to_an_outside_file(Closure $operation): void
     {
         $this->createSymlink($this->root . '/files-old/secret.txt', $this->root . '/files/file-link.txt');
 
         $this->expectException(InvalidPathException::class);
-        $this->adapter->$operation('file-link.txt');
+        $operation($this->adapter, 'file-link.txt');
     }
 
     #[Test]
@@ -82,6 +89,9 @@ final class LocalAdapterPathEscapeTest extends TestCase
         $this->adapter->read('sibling-link/secret.txt');
     }
 
+    /**
+     * @return array<string, array{string}>
+     */
     public static function traversalPaths(): array
     {
         return [
@@ -99,6 +109,9 @@ final class LocalAdapterPathEscapeTest extends TestCase
         $this->adapter->read($path);
     }
 
+    /**
+     * @return array<string, array{string}>
+     */
     public static function encodedTraversalPaths(): array
     {
         return [
@@ -151,7 +164,7 @@ final class LocalAdapterPathEscapeTest extends TestCase
 
         // PHP's own rename()/symlink() flush the realpath cache, so swap the directory from outside the process.
         if (!function_exists('exec') || !is_executable('/bin/sh')) {
-            $this->markTestSkipped('Running an external command is unavailable.');
+            self::markTestSkipped('Running an external command is unavailable.');
         }
         exec(sprintf(
             'mv %s %s && ln -s %s %s',
@@ -161,14 +174,13 @@ final class LocalAdapterPathEscapeTest extends TestCase
             escapeshellarg($this->root . '/files/d'),
         ), $output, $status);
         if ($status !== 0) {
-            $this->markTestSkipped('Swapping the directory with a symlink failed.');
+            self::markTestSkipped('Swapping the directory with a symlink failed.');
         }
+
+        $this->expectException(InvalidPathException::class);
 
         try {
             $this->adapter->read('d/secret.txt');
-            self::fail('Reading through the swapped symlink should have been rejected.');
-        } catch (InvalidPathException) {
-            self::assertTrue(true);
         } finally {
             if (is_link($this->root . '/files/d')) {
                 unlink($this->root . '/files/d');
@@ -192,7 +204,7 @@ final class LocalAdapterPathEscapeTest extends TestCase
     private function createSymlink(string $target, string $link): void
     {
         if (!function_exists('symlink') || !@symlink($target, $link)) {
-            $this->markTestSkipped('Creating symlinks is unavailable.');
+            self::markTestSkipped('Creating symlinks is unavailable.');
         }
     }
 }

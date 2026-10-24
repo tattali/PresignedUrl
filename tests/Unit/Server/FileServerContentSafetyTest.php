@@ -31,7 +31,9 @@ final class FileServerContentSafetyTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (glob($this->tempDir . '/*') ?: [] as $file) {
+        $files = glob($this->tempDir . '/*');
+
+        foreach ($files === false ? [] : $files as $file) {
             unlink($file);
         }
         rmdir($this->tempDir);

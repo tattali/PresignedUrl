@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tattali\PresignedUrl\Tests\Unit\Bridge\Laravel;
 
-use Illuminate\Container\Container;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Tattali\PresignedUrl\Bridge\Laravel\PresignedUrlServiceProvider;
 use Tattali\PresignedUrl\Config\Config;
+use Tattali\PresignedUrl\Tests\Unit\Bridge\Laravel\Fixtures\TestApplication;
 
 final class ContentSafetyConfigTest extends TestCase
 {
@@ -54,11 +54,11 @@ final class ContentSafetyConfigTest extends TestCase
     }
 
     /**
-     * @param array<string, mixed> $overrides
+     * @param array{serving: array{content_disposition?: string, allow_unsafe_inline?: bool}} $overrides
      */
     private function buildConfig(array $overrides): Config
     {
-        $provider = new ContentSafetyTestServiceProvider(new Container());
+        $provider = new ContentSafetyTestServiceProvider(new TestApplication());
 
         return $provider->exposeBuildConfig(array_merge([
             'secret' => 'test-secret-0123456789abcdef0123456789',
@@ -67,10 +67,13 @@ final class ContentSafetyConfigTest extends TestCase
     }
 }
 
+/**
+ * @phpstan-import-type PresignedUrlConfig from PresignedUrlServiceProvider
+ */
 class ContentSafetyTestServiceProvider extends PresignedUrlServiceProvider
 {
     /**
-     * @param array<string, mixed> $config
+     * @param PresignedUrlConfig $config
      */
     public function exposeBuildConfig(array $config): Config
     {

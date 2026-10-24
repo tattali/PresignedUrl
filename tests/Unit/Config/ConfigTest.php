@@ -24,9 +24,9 @@ final class ConfigTest extends TestCase
 
         self::assertSame('my-secret-0123456789abcdef0123456789', $config->secret);
         self::assertSame('https://cdn.example.com', $config->baseUrl);
-        self::assertInstanceOf(SignatureConfig::class, $config->signature);
-        self::assertInstanceOf(ServingConfig::class, $config->serving);
-        self::assertInstanceOf(SecurityConfig::class, $config->security);
+        self::assertEquals(new SignatureConfig(), $config->signature);
+        self::assertEquals(new ServingConfig(), $config->serving);
+        self::assertEquals(new SecurityConfig(), $config->security);
         self::assertSame([], $config->buckets);
     }
 

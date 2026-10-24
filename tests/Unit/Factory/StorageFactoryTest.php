@@ -7,13 +7,10 @@ namespace Tattali\PresignedUrl\Tests\Unit\Factory;
 use League\Flysystem\FilesystemOperator;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Tattali\PresignedUrl\Adapter\AwsS3Adapter;
-use Tattali\PresignedUrl\Adapter\FlysystemAdapter;
-use Tattali\PresignedUrl\Adapter\LocalAdapter;
 use Tattali\PresignedUrl\Config\Config;
 use Tattali\PresignedUrl\Factory\StorageFactory;
-use Tattali\PresignedUrl\Server\FileServerInterface;
-use Tattali\PresignedUrl\Storage\StorageInterface;
+use Tattali\PresignedUrl\Server\FileServer;
+use Tattali\PresignedUrl\Storage\Storage;
 
 final class StorageFactoryTest extends TestCase
 {
@@ -27,7 +24,7 @@ final class StorageFactoryTest extends TestCase
 
         $storage = StorageFactory::create($config);
 
-        self::assertInstanceOf(StorageInterface::class, $storage);
+        self::assertInstanceOf(Storage::class, $storage);
     }
 
     #[Test]
@@ -40,26 +37,39 @@ final class StorageFactoryTest extends TestCase
 
         [$storage, $server] = StorageFactory::createWithServer($config);
 
-        self::assertInstanceOf(StorageInterface::class, $storage);
-        self::assertInstanceOf(FileServerInterface::class, $server);
+        self::assertInstanceOf(Storage::class, $storage);
+        self::assertInstanceOf(FileServer::class, $server);
     }
 
     #[Test]
     public function it_creates_local_adapter(): void
     {
-        $adapter = StorageFactory::localAdapter('/tmp');
+        $directory = sys_get_temp_dir() . '/presigned-factory-test-' . uniqid();
+        mkdir($directory);
+        file_put_contents($directory . '/file.txt', 'local content');
 
-        self::assertInstanceOf(LocalAdapter::class, $adapter);
+        try {
+            $adapter = StorageFactory::localAdapter($directory);
+
+            self::assertSame('local content', $adapter->read('file.txt'));
+        } finally {
+            unlink($directory . '/file.txt');
+            rmdir($directory);
+        }
     }
 
     #[Test]
     public function it_creates_flysystem_adapter(): void
     {
         $filesystem = $this->createMock(FilesystemOperator::class);
+        $filesystem->expects($this->once())
+            ->method('fileExists')
+            ->with('file.txt')
+            ->willReturn(true);
 
         $adapter = StorageFactory::flysystemAdapter($filesystem);
 
-        self::assertInstanceOf(FlysystemAdapter::class, $adapter);
+        self::assertTrue($adapter->exists('file.txt'));
     }
 
     #[Test]
@@ -72,6 +82,9 @@ final class StorageFactoryTest extends TestCase
             'bucket' => 'my-bucket',
         ]);
 
-        self::assertInstanceOf(AwsS3Adapter::class, $adapter);
+        $url = $adapter->nativePresignedUrl('file.pdf', time() + 3600);
+
+        self::assertNotNull($url);
+        self::assertStringContainsString('my-bucket', $url);
     }
 }

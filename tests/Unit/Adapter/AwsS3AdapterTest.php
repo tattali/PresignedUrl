@@ -39,7 +39,10 @@ final class AwsS3AdapterTest extends TestCase
             'bucket' => 'my-bucket',
         ]);
 
-        self::assertInstanceOf(AwsS3Adapter::class, $adapter);
+        $url = $adapter->nativePresignedUrl('file.pdf', time() + 3600);
+
+        self::assertNotNull($url);
+        self::assertStringStartsWith('https://my-bucket.s3.amazonaws.com/file.pdf?', $url);
     }
 
     #[Test]
@@ -54,7 +57,10 @@ final class AwsS3AdapterTest extends TestCase
             'use_path_style_endpoint' => true,
         ]);
 
-        self::assertInstanceOf(AwsS3Adapter::class, $adapter);
+        $url = $adapter->nativePresignedUrl('file.pdf', time() + 3600);
+
+        self::assertNotNull($url);
+        self::assertStringStartsWith('http://localhost:9000/my-bucket/file.pdf?', $url);
     }
 
     #[Test]
@@ -68,7 +74,10 @@ final class AwsS3AdapterTest extends TestCase
             'version' => '2006-03-01',
         ]);
 
-        self::assertInstanceOf(AwsS3Adapter::class, $adapter);
+        $url = $adapter->nativePresignedUrl('file.pdf', time() + 3600);
+
+        self::assertNotNull($url);
+        self::assertStringStartsWith('https://test-bucket.s3.eu-west-1.amazonaws.com/file.pdf?', $url);
     }
 
     #[Test]
