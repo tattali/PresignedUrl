@@ -233,6 +233,18 @@ readonly class FileServer implements FileServerInterface
     ): FileResponse {
         $range = $this->parseRange($requestHeaders, $size);
 
+        $ifRange = $requestHeaders['If-Range'] ?? $requestHeaders['if-range'] ?? null;
+        if ($ifRange !== null && $ifRange !== $responseHeaders['ETag'] && $ifRange !== $responseHeaders['Last-Modified']) {
+            $range = null;
+        }
+
+        if ($range === false) {
+            $responseHeaders['Content-Range'] = sprintf('bytes */%d', $size);
+            $responseHeaders['Content-Length'] = '0';
+
+            return new FileResponse(416, $responseHeaders, '');
+        }
+
         if ($range !== null) {
             return $this->buildPartialResponse($adapter, $path, $range, $size, $responseHeaders);
         }
@@ -358,26 +370,41 @@ readonly class FileServer implements FileServerInterface
     /**
      * @param array<string, string> $headers
      *
-     * @return array{start: int, end: int}|null
+     * @return array{start: int, end: int}|false|null
      */
-    protected function parseRange(array $headers, int $size): ?array
+    protected function parseRange(array $headers, int $size): array|false|null
     {
         $range = $headers['Range'] ?? $headers['range'] ?? null;
 
-        if ($range === null || !str_starts_with($range, 'bytes=')) {
+        if ($range === null || preg_match('/^bytes=(\d*)-(\d*)$/', $range, $matches) !== 1) {
             return null;
         }
 
-        $parts = explode('-', substr($range, 6));
-
-        if (count($parts) !== 2) {
+        if ($matches[1] === '' && $matches[2] === '') {
             return null;
         }
 
-        $start = $parts[0] !== '' ? (int) $parts[0] : 0;
-        $end = $parts[1] !== '' ? min((int) $parts[1], $size - 1) : $size - 1;
+        if ($matches[1] === '') {
+            $suffixLength = (int) $matches[2];
+            if ($suffixLength === 0 || $size === 0) {
+                return false;
+            }
 
-        return ($start <= $end && $start < $size) ? ['start' => $start, 'end' => $end] : null;
+            return ['start' => max(0, $size - $suffixLength), 'end' => $size - 1];
+        }
+
+        $start = (int) $matches[1];
+        if ($matches[2] !== '' && $start > (int) $matches[2]) {
+            return null;
+        }
+
+        if ($start >= $size) {
+            return false;
+        }
+
+        $end = $matches[2] !== '' ? min((int) $matches[2], $size - 1) : $size - 1;
+
+        return ['start' => $start, 'end' => $end];
     }
 
     /**
@@ -399,12 +426,45 @@ readonly class FileServer implements FileServerInterface
         $headers['Content-Range'] = sprintf('bytes %d-%d/%d', $start, $end, $totalSize);
 
         $stream = $adapter->readStream($path);
-        fseek($stream, $start);
+        $body = fopen('php://temp', 'w+b');
+        if ($body === false) {
+            fclose($stream);
 
-        $content = $length > 0 ? fread($stream, $length) : '';
-        fclose($stream);
+            return new FileResponse(500, ['Content-Length' => '0'], '');
+        }
 
-        return new FileResponse(206, $headers, $content !== false ? $content : '');
+        $complete = false;
+        try {
+            if ($start > 0 && @fseek($stream, $start) !== 0) {
+                $remaining = $start;
+                while ($remaining > 0 && !feof($stream)) {
+                    $skipped = fread($stream, min(8192, $remaining));
+                    if ($skipped === false || $skipped === '') {
+                        break;
+                    }
+                    $remaining -= strlen($skipped);
+                }
+
+                if ($remaining > 0) {
+                    return new FileResponse(500, ['Content-Length' => '0'], '');
+                }
+            }
+
+            $complete = stream_copy_to_stream($stream, $body, $length) === $length;
+        } finally {
+            fclose($stream);
+            if (!$complete) {
+                fclose($body);
+            }
+        }
+
+        if (!$complete) {
+            return new FileResponse(500, ['Content-Length' => '0'], '');
+        }
+
+        rewind($body);
+
+        return new FileResponse(206, $headers, $body);
     }
 
     /**
