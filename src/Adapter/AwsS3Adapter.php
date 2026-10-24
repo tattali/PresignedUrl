@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tattali\PresignedUrl\Adapter;
 
+use Aws\S3\Exception\S3Exception;
 use Aws\S3\S3Client;
 use DateTimeImmutable;
 use DateTimeInterface;
@@ -54,7 +55,25 @@ readonly class AwsS3Adapter implements AdapterInterface
 
     public function exists(string $path): bool
     {
-        return $this->client->doesObjectExist($this->bucket, $path);
+        try {
+            $this->client->execute($this->client->getCommand('HeadObject', [
+                'Bucket' => $this->bucket,
+                'Key' => $path,
+            ]));
+
+            return true;
+        } catch (S3Exception $e) {
+            // Same outcome as the deprecated S3Client::doesObjectExist(): AccessDenied counts as existing, server errors are rethrown.
+            if ($e->getAwsErrorCode() === 'AccessDenied') {
+                return true;
+            }
+
+            if ($e->getStatusCode() >= 500) {
+                throw $e;
+            }
+
+            return false;
+        }
     }
 
     public function read(string $path): string
