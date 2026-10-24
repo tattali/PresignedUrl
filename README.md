@@ -339,8 +339,7 @@ class InvoiceController extends Controller
 
 Routes are automatically registered:
 
-- `GET /storage/serve/{bucket}/{path}` -> `presigned-url.serve`
-- `HEAD /storage/serve/{bucket}/{path}` -> `presigned-url.serve.head`
+- `GET /storage/serve/{bucket}/{path}` -> `presigned-url.serve` (also answers `HEAD`)
 
 ## URL Format
 
