@@ -761,7 +761,7 @@ final class FileServerTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())
             ->method('warning')
-            ->with('Bad request', $this->callback(function (array $context): bool {
+            ->with('Bad request', self::callback(function (array $context): bool {
                 return $context['bucket'] === 'documents'
                     && $context['path'] === '../secret.txt'
                     && is_string($context['error'])
