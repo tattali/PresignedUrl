@@ -38,7 +38,7 @@ final class PresignedUrlFlowTest extends TestCase
         file_put_contents($this->tempDir . '/document.pdf', 'PDF content here');
 
         $config = new Config(
-            secret: 'my-secret-key-for-signing',
+            secret: 'my-secret-key-for-signing-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
@@ -76,7 +76,7 @@ final class PresignedUrlFlowTest extends TestCase
         file_put_contents($this->tempDir . '/test.txt', 'Hello');
 
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://example.com',
         );
 
@@ -107,7 +107,7 @@ final class PresignedUrlFlowTest extends TestCase
         file_put_contents($this->tempDir . '/test.txt', 'Hello');
 
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://example.com',
         );
 
@@ -132,7 +132,7 @@ final class PresignedUrlFlowTest extends TestCase
         file_put_contents($this->tempDir . '/test.txt', 'Hello');
 
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://example.com',
         );
 
@@ -149,7 +149,7 @@ final class PresignedUrlFlowTest extends TestCase
     public function it_respects_max_ttl(): void
     {
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://example.com',
             serving: new ServingConfig(maxTtl: 3600),
         );
@@ -170,7 +170,7 @@ final class PresignedUrlFlowTest extends TestCase
         file_put_contents($this->tempDir . '/evil.php', '<?php echo "evil";');
 
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://example.com',
         );
 
@@ -192,7 +192,7 @@ final class PresignedUrlFlowTest extends TestCase
         file_put_contents($this->tempDir . '/large.txt', 'Hello World, this is a test file!');
 
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://example.com',
         );
 
@@ -208,7 +208,7 @@ final class PresignedUrlFlowTest extends TestCase
         ]);
 
         self::assertSame(206, $response->getStatusCode());
-        self::assertSame('Hello', $response->getBody());
+        self::assertSame('Hello', stream_get_contents($response->getBody()));
         self::assertStringContainsString('bytes 0-4/', $response->getHeader('Content-Range') ?? '');
     }
 
@@ -218,7 +218,7 @@ final class PresignedUrlFlowTest extends TestCase
         file_put_contents($this->tempDir . '/cached.txt', 'Cached content');
 
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://example.com',
         );
 
@@ -250,7 +250,7 @@ final class PresignedUrlFlowTest extends TestCase
         file_put_contents($this->tempDir . '/data.json', $jsonContent);
 
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://example.com',
             serving: new ServingConfig(
                 compression: new CompressionConfig(enabled: true, minSize: 1024),
@@ -276,7 +276,7 @@ final class PresignedUrlFlowTest extends TestCase
         file_put_contents($this->tempDir . '/api.json', '{"status":"ok"}');
 
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://example.com',
             security: new SecurityConfig(allowedOrigins: ['https://app.example.com']),
         );
@@ -303,7 +303,7 @@ final class PresignedUrlFlowTest extends TestCase
         file_put_contents($this->tempDir . '/test.txt', 'Hello World');
 
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://example.com',
         );
 
@@ -328,7 +328,7 @@ final class PresignedUrlFlowTest extends TestCase
         file_put_contents($this->tempDir . '/deep/nested/folder/file.txt', 'Nested content');
 
         $config = new Config(
-            secret: 'secret',
+            secret: 'secret-0123456789abcdef0123456789',
             baseUrl: 'https://example.com',
         );
 
@@ -358,7 +358,7 @@ final class PresignedUrlFlowTest extends TestCase
         file_put_contents($this->tempDir . '/test.txt', 'Factory test');
 
         $config = new Config(
-            secret: 'factory-secret',
+            secret: 'factory-secret-0123456789abcdef0123456789',
             baseUrl: 'https://factory.example.com',
         );
 
