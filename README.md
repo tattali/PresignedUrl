@@ -16,7 +16,7 @@ composer require tattali/presigned-url
 
 ## Features
 
-- Presigned URL generation with HMAC signature (timing-safe)
+- Presigned URL generation with HMAC signature (timing-safe, secret of at least 32 bytes)
 - Multi-bucket support with different adapters
 - Conditional caching (ETag, If-None-Match, If-Modified-Since -> 304)
 - Range requests (206 Partial Content, 416 for unsatisfiable ranges, `If-Range`)
@@ -36,7 +36,7 @@ composer require tattali/presigned-url
 use Tattali\PresignedUrl\Config\Config;
 use Tattali\PresignedUrl\Factory\StorageFactory;
 
-// Configuration
+// Configuration. The secret must be at least 32 bytes: generate one with bin2hex(random_bytes(32))
 $config = new Config(
     secret: 'change-me-to-a-random-32-byte-secret',
     baseUrl: 'https://cdn.example.com',
@@ -464,15 +464,16 @@ Bucket names are validated by `Storage::addBucket()` (3 to 63 characters, lowerc
 
 ### Algorithm
 
-- `hash_hmac()` with `SignatureConfig::$algorithm`, `sha256` by default. Any algorithm `hash_hmac()` supports can be configured.
-- The binary digest is hex-encoded and cut to `SignatureConfig::$length` bytes: 16 bytes by default, so 32 hexadecimal characters and 128 bits. A `length` larger than the digest gives the full digest.
+- `hash_hmac()` with `SignatureConfig::$algorithm`, `sha256` by default. The algorithm must be one of `hash_hmac_algos()`; the name is case-insensitive.
+- The binary digest is hex-encoded and cut to `SignatureConfig::$length` bytes: 16 bytes by default, so 32 hexadecimal characters and 128 bits. `length` must be at least 16 (`SignatureConfig::MIN_LENGTH`) and at most the digest size (32 for `sha256`, 64 for `sha512`).
 - One secret per `Config`, shared by every bucket.
-- The library does not check the secret or the length. An empty secret is accepted, which lets anyone compute valid signatures, and a small `length` gives a short signature. Use a random secret of at least 32 bytes (for example `bin2hex(random_bytes(32))`) and keep `length` at 16 or more.
+- **The secret must be at least 32 bytes** (`HmacSigner::MIN_SECRET_LENGTH`, counted with `strlen()`). Generate one with `bin2hex(random_bytes(32))`.
+- `Config`, `HmacSigner` and `SignatureConfig` throw `InvalidConfigurationException` (an `InvalidArgumentException`) when they are built with a shorter or empty secret, a `length` out of these bounds or an unknown algorithm. The message never contains the secret. In the Symfony bundle this happens when the service is first built.
 - The Laravel configuration falls back to `APP_KEY` when `PRESIGNED_STORAGE_SECRET` is not set. Set a dedicated secret.
 
 ### Signature comparison
 
-`HmacSigner::verify()` recomputes the signature and compares it with `hash_equals()`, which takes the same time whatever the position of the first differing character. The comparison is case-sensitive: the signature must be lowercase hex.
+`HmacSigner::verify()` recomputes the signature, rejects a signature whose length differs from the expected one, and compares it with `hash_equals()`, which takes the same time whatever the position of the first differing character. The comparison is case-sensitive: the signature must be lowercase hex.
 
 `FileServer` checks the signature before anything else (`FileServer::doServe()`). An unsigned request gets 403 whether or not the bucket, the file or the expiry are valid.
 
@@ -501,7 +502,7 @@ Bucket names are validated by `Storage::addBucket()` (3 to 63 characters, lowerc
 - The default block-list is `php`, `phtml`, `php3`, `php4`, `php5`, `php7`, `phps`, `phar`, `exe`, `sh`, `bat` and `cmd`. Block-list entries must be lowercase.
 - When `allowedExtensions` is not empty, only those extensions are served. Files without an extension skip both lists, even when an allow-list is set.
 - When `maxFileSize` is above 0, larger files answer 404.
-- The extension says nothing about the content. The `Content-Type` comes from the adapter: `LocalAdapter` detects it from the file content with `finfo`, which reports most JavaScript and CSS files as `text/plain`. Because of `nosniff`, browsers then refuse to run or apply them; serve such files from a `FlysystemAdapter` bucket, which falls back to the extension for `text/plain`.
+- The extension says nothing about the content. The `Content-Type` comes from the adapter: `LocalAdapter` detects it from the file content with `finfo`. When `finfo` only gives a generic type (`text/plain`, `application/octet-stream`, an empty-file type, or a source-code guess such as `text/x-c++` or `text/x-java`), `LocalAdapter` uses the extension for common web and text files (`.js`, `.mjs`, `.css`, `.svg`, `.json`, `.html`, `.xml`, `.csv`, `.woff2` and a few others), so browsers accept scripts and styles despite `nosniff`. Any other type detected from the content wins over the extension.
 
 ### What is not protected
 
