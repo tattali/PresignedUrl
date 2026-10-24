@@ -17,6 +17,8 @@ use Tattali\PresignedUrl\Storage\StorageInterface;
 
 readonly class FileServer implements FileServerInterface
 {
+    protected const GZIP_ETAG_SUFFIX = '-gzip';
+
     public function __construct(
         protected StorageInterface $storage,
         protected SignerInterface $signer,
@@ -187,11 +189,30 @@ readonly class FileServer implements FileServerInterface
 
         $responseHeaders = $this->buildHeaders($path, $mimeType, $size, $lastModified, $etag, $headers);
 
-        if ($this->isNotModified($headers, $etag, $lastModified)) {
-            return new FileResponse(304, $responseHeaders);
+        $compressible = $this->config->serving->compression->shouldCompress($mimeType, $size);
+        $gzip = $compressible && $this->acceptsGzip($headers);
+
+        if ($compressible) {
+            $responseHeaders['Vary'] = 'Accept-Encoding';
         }
 
-        if ($method === 'HEAD') {
+        $notModified = $this->isNotModified($headers, $gzip ? $etag . self::GZIP_ETAG_SUFFIX : $etag, $lastModified);
+
+        if ($notModified || $method === 'HEAD') {
+            if ($gzip) {
+                // The compressed size is unknown without compressing, so no Content-Length is sent.
+                $responseHeaders['ETag'] = '"' . $etag . self::GZIP_ETAG_SUFFIX . '"';
+                unset($responseHeaders['Content-Length']);
+            }
+
+            if ($notModified) {
+                return new FileResponse(304, $responseHeaders);
+            }
+
+            if ($gzip) {
+                $responseHeaders['Content-Encoding'] = 'gzip';
+            }
+
             return new FileResponse(200, $responseHeaders);
         }
 
@@ -212,8 +233,32 @@ readonly class FileServer implements FileServerInterface
     ): FileResponse {
         $range = $this->parseRange($requestHeaders, $size);
 
+        $ifRange = $requestHeaders['If-Range'] ?? $requestHeaders['if-range'] ?? null;
+        if ($ifRange !== null && $ifRange !== $responseHeaders['ETag'] && $ifRange !== $responseHeaders['Last-Modified']) {
+            $range = null;
+        }
+
+        if ($range === false) {
+            $responseHeaders['Content-Range'] = sprintf('bytes */%d', $size);
+            $responseHeaders['Content-Length'] = '0';
+
+            return new FileResponse(416, $responseHeaders, '');
+        }
+
         if ($range !== null) {
             return $this->buildPartialResponse($adapter, $path, $range, $size, $responseHeaders);
+        }
+
+        if ($this->config->serving->compression->shouldCompress($mimeType, $size) && $this->acceptsGzip($requestHeaders)) {
+            $compressed = gzencode($adapter->read($path), $this->config->serving->compression->level);
+
+            if ($compressed !== false) {
+                $responseHeaders['Content-Encoding'] = 'gzip';
+                $responseHeaders['Content-Length'] = (string) strlen($compressed);
+                $responseHeaders['ETag'] = '"' . trim($responseHeaders['ETag'] ?? '', '"') . self::GZIP_ETAG_SUFFIX . '"';
+
+                return new FileResponse(200, $responseHeaders, $compressed);
+            }
         }
 
         $body = $this->getResponseBody($adapter, $path, $mimeType, $size);
@@ -241,11 +286,16 @@ readonly class FileServer implements FileServerInterface
             'Last-Modified' => gmdate('D, d M Y H:i:s', $lastModified) . ' GMT',
             'Cache-Control' => $this->config->serving->cacheControl,
             'Accept-Ranges' => 'bytes',
+            'X-Content-Type-Options' => 'nosniff',
         ];
 
-        $filename = basename($path);
         $disposition = $this->config->serving->contentDisposition;
-        $headers['Content-Disposition'] = sprintf('%s; filename="%s"', $disposition, $filename);
+        if (!$this->config->serving->allowUnsafeInline && $this->isScriptableContent($path, $mimeType)) {
+            $disposition = 'attachment';
+            $headers['Content-Security-Policy'] = 'sandbox';
+        }
+
+        $headers['Content-Disposition'] = ContentDisposition::format($disposition, basename($path));
 
         $origin = $requestHeaders['Origin'] ?? $requestHeaders['origin'] ?? null;
         if ($origin !== null && $this->config->security->isOriginAllowed($origin)) {
@@ -256,6 +306,41 @@ readonly class FileServer implements FileServerInterface
         }
 
         return $headers;
+    }
+
+    /**
+     * Tells whether a browser could run script from the file when it is displayed inline.
+     */
+    protected function isScriptableContent(string $path, string $mimeType): bool
+    {
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if (in_array($extension, ['html', 'htm', 'xhtml', 'svg', 'svgz', 'xml', 'xsl', 'js', 'mjs'], true)) {
+            return true;
+        }
+
+        $mediaType = strtolower(trim(explode(';', $mimeType, 2)[0]));
+        if (str_ends_with($mediaType, '+xml') || str_starts_with($mediaType, 'multipart/')) {
+            return true;
+        }
+
+        // Browsers split on commas and the last valid type wins, so anything but one type/subtype token is suspect.
+        if (preg_match('~^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$~', $mediaType) !== 1) {
+            return true;
+        }
+
+        return in_array($mediaType, [
+            'text/html',
+            'application/xhtml+xml',
+            'image/svg+xml',
+            'text/xml',
+            'application/xml',
+            'text/xsl',
+            'text/javascript',
+            'application/javascript',
+            'application/x-javascript',
+            'application/ecmascript',
+            'text/ecmascript',
+        ], true);
     }
 
     /**
@@ -285,26 +370,41 @@ readonly class FileServer implements FileServerInterface
     /**
      * @param array<string, string> $headers
      *
-     * @return array{start: int, end: int}|null
+     * @return array{start: int, end: int}|false|null
      */
-    protected function parseRange(array $headers, int $size): ?array
+    protected function parseRange(array $headers, int $size): array|false|null
     {
         $range = $headers['Range'] ?? $headers['range'] ?? null;
 
-        if ($range === null || !str_starts_with($range, 'bytes=')) {
+        if ($range === null || preg_match('/^bytes=(\d*)-(\d*)$/', $range, $matches) !== 1) {
             return null;
         }
 
-        $parts = explode('-', substr($range, 6));
-
-        if (count($parts) !== 2) {
+        if ($matches[1] === '' && $matches[2] === '') {
             return null;
         }
 
-        $start = $parts[0] !== '' ? (int) $parts[0] : 0;
-        $end = $parts[1] !== '' ? min((int) $parts[1], $size - 1) : $size - 1;
+        if ($matches[1] === '') {
+            $suffixLength = (int) $matches[2];
+            if ($suffixLength === 0 || $size === 0) {
+                return false;
+            }
 
-        return ($start <= $end && $start < $size) ? ['start' => $start, 'end' => $end] : null;
+            return ['start' => max(0, $size - $suffixLength), 'end' => $size - 1];
+        }
+
+        $start = (int) $matches[1];
+        if ($matches[2] !== '' && $start > (int) $matches[2]) {
+            return null;
+        }
+
+        if ($start >= $size) {
+            return false;
+        }
+
+        $end = $matches[2] !== '' ? min((int) $matches[2], $size - 1) : $size - 1;
+
+        return ['start' => $start, 'end' => $end];
     }
 
     /**
@@ -326,33 +426,95 @@ readonly class FileServer implements FileServerInterface
         $headers['Content-Range'] = sprintf('bytes %d-%d/%d', $start, $end, $totalSize);
 
         $stream = $adapter->readStream($path);
-        fseek($stream, $start);
+        $body = fopen('php://temp', 'w+b');
+        if ($body === false) {
+            fclose($stream);
 
-        $content = $length > 0 ? fread($stream, $length) : '';
-        fclose($stream);
+            return new FileResponse(500, ['Content-Length' => '0'], '');
+        }
 
-        return new FileResponse(206, $headers, $content !== false ? $content : '');
+        $complete = false;
+        try {
+            if ($start > 0 && @fseek($stream, $start) !== 0) {
+                $remaining = $start;
+                while ($remaining > 0 && !feof($stream)) {
+                    $skipped = fread($stream, min(8192, $remaining));
+                    if ($skipped === false || $skipped === '') {
+                        break;
+                    }
+                    $remaining -= strlen($skipped);
+                }
+
+                if ($remaining > 0) {
+                    return new FileResponse(500, ['Content-Length' => '0'], '');
+                }
+            }
+
+            $complete = stream_copy_to_stream($stream, $body, $length) === $length;
+        } finally {
+            fclose($stream);
+            if (!$complete) {
+                fclose($body);
+            }
+        }
+
+        if (!$complete) {
+            return new FileResponse(500, ['Content-Length' => '0'], '');
+        }
+
+        rewind($body);
+
+        return new FileResponse(206, $headers, $body);
     }
 
     /**
-     * @return resource|string
+     * @return resource
      */
     protected function getResponseBody(AdapterInterface $adapter, string $path, string $mimeType, int $size)
     {
-        $compression = $this->config->serving->compression;
+        return $adapter->readStream($path);
+    }
 
-        if ($compression->shouldCompress($mimeType, $size)) {
-            $content = $adapter->read($path);
-            $compressed = gzencode($content, $compression->level);
-
-            if ($compressed !== false) {
-                return $compressed;
+    /**
+     * @param array<string, string> $requestHeaders
+     */
+    protected function acceptsGzip(array $requestHeaders): bool
+    {
+        $value = null;
+        foreach ($requestHeaders as $name => $v) {
+            if (strtolower((string) $name) === 'accept-encoding') {
+                $value = $v;
+                break;
             }
-
-            return $content;
         }
 
-        return $adapter->readStream($path);
+        if ($value === null) {
+            return false;
+        }
+
+        $gzipQ = null;
+        $wildcardQ = null;
+
+        foreach (explode(',', $value) as $part) {
+            $params = explode(';', $part);
+            $coding = strtolower(trim($params[0]));
+            $q = 1.0;
+
+            foreach (array_slice($params, 1) as $param) {
+                $kv = explode('=', $param, 2);
+                if (strtolower(trim($kv[0])) === 'q' && isset($kv[1]) && is_numeric(trim($kv[1]))) {
+                    $q = (float) trim($kv[1]);
+                }
+            }
+
+            if ($coding === 'gzip' || $coding === 'x-gzip') {
+                $gzipQ = max($gzipQ ?? 0.0, $q);
+            } elseif ($coding === '*') {
+                $wildcardQ = $q;
+            }
+        }
+
+        return ($gzipQ ?? $wildcardQ ?? 0.0) > 0.0;
     }
 
     protected function generateEtag(string $path, int $size, int $lastModified): string
