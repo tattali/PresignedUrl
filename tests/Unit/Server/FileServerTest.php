@@ -754,7 +754,7 @@ final class FileServerTest extends TestCase
     public function it_returns_400_and_logs_a_signed_path_traversal_attempt(): void
     {
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
