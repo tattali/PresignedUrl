@@ -12,6 +12,7 @@ return (new Configuration())
     ->ignoreErrorsOnPackageAndPaths('league/flysystem', [
         __DIR__ . '/src/Adapter/FlysystemAdapter.php',
         __DIR__ . '/src/Factory/StorageFactory.php',
+        __DIR__ . '/src/Bridge/Laravel/PresignedUrlServiceProvider.php',
     ], [ErrorType::DEV_DEPENDENCY_IN_PROD])
     ->ignoreErrorsOnPackageAndPaths('psr/log', [
         __DIR__ . '/src/Server/FileServer.php',
