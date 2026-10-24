@@ -33,7 +33,9 @@ final class FileServerCompressionTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (glob($this->tempDir . '/*') ?: [] as $f) {
+        $files = glob($this->tempDir . '/*');
+
+        foreach ($files === false ? [] : $files as $f) {
             unlink($f);
         }
         rmdir($this->tempDir);
