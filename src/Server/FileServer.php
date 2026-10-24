@@ -17,6 +17,8 @@ use Tattali\PresignedUrl\Storage\StorageInterface;
 
 readonly class FileServer implements FileServerInterface
 {
+    protected const GZIP_ETAG_SUFFIX = '-gzip';
+
     public function __construct(
         protected StorageInterface $storage,
         protected SignerInterface $signer,
@@ -187,11 +189,30 @@ readonly class FileServer implements FileServerInterface
 
         $responseHeaders = $this->buildHeaders($path, $mimeType, $size, $lastModified, $etag, $headers);
 
-        if ($this->isNotModified($headers, $etag, $lastModified)) {
-            return new FileResponse(304, $responseHeaders);
+        $compressible = $this->config->serving->compression->shouldCompress($mimeType, $size);
+        $gzip = $compressible && $this->acceptsGzip($headers);
+
+        if ($compressible) {
+            $responseHeaders['Vary'] = 'Accept-Encoding';
         }
 
-        if ($method === 'HEAD') {
+        $notModified = $this->isNotModified($headers, $gzip ? $etag . self::GZIP_ETAG_SUFFIX : $etag, $lastModified);
+
+        if ($notModified || $method === 'HEAD') {
+            if ($gzip) {
+                // The compressed size is unknown without compressing, so no Content-Length is sent.
+                $responseHeaders['ETag'] = '"' . $etag . self::GZIP_ETAG_SUFFIX . '"';
+                unset($responseHeaders['Content-Length']);
+            }
+
+            if ($notModified) {
+                return new FileResponse(304, $responseHeaders);
+            }
+
+            if ($gzip) {
+                $responseHeaders['Content-Encoding'] = 'gzip';
+            }
+
             return new FileResponse(200, $responseHeaders);
         }
 
@@ -226,6 +247,18 @@ readonly class FileServer implements FileServerInterface
 
         if ($range !== null) {
             return $this->buildPartialResponse($adapter, $path, $range, $size, $responseHeaders);
+        }
+
+        if ($this->config->serving->compression->shouldCompress($mimeType, $size) && $this->acceptsGzip($requestHeaders)) {
+            $compressed = gzencode($adapter->read($path), $this->config->serving->compression->level);
+
+            if ($compressed !== false) {
+                $responseHeaders['Content-Encoding'] = 'gzip';
+                $responseHeaders['Content-Length'] = (string) strlen($compressed);
+                $responseHeaders['ETag'] = '"' . trim($responseHeaders['ETag'] ?? '', '"') . self::GZIP_ETAG_SUFFIX . '"';
+
+                return new FileResponse(200, $responseHeaders, $compressed);
+            }
         }
 
         $body = $this->getResponseBody($adapter, $path, $mimeType, $size);
@@ -435,24 +468,53 @@ readonly class FileServer implements FileServerInterface
     }
 
     /**
-     * @return resource|string
+     * @return resource
      */
     protected function getResponseBody(AdapterInterface $adapter, string $path, string $mimeType, int $size)
     {
-        $compression = $this->config->serving->compression;
+        return $adapter->readStream($path);
+    }
 
-        if ($compression->shouldCompress($mimeType, $size)) {
-            $content = $adapter->read($path);
-            $compressed = gzencode($content, $compression->level);
-
-            if ($compressed !== false) {
-                return $compressed;
+    /**
+     * @param array<string, string> $requestHeaders
+     */
+    protected function acceptsGzip(array $requestHeaders): bool
+    {
+        $value = null;
+        foreach ($requestHeaders as $name => $v) {
+            if (strtolower((string) $name) === 'accept-encoding') {
+                $value = $v;
+                break;
             }
-
-            return $content;
         }
 
-        return $adapter->readStream($path);
+        if ($value === null) {
+            return false;
+        }
+
+        $gzipQ = null;
+        $wildcardQ = null;
+
+        foreach (explode(',', $value) as $part) {
+            $params = explode(';', $part);
+            $coding = strtolower(trim($params[0]));
+            $q = 1.0;
+
+            foreach (array_slice($params, 1) as $param) {
+                $kv = explode('=', $param, 2);
+                if (strtolower(trim($kv[0])) === 'q' && isset($kv[1]) && is_numeric(trim($kv[1]))) {
+                    $q = (float) trim($kv[1]);
+                }
+            }
+
+            if ($coding === 'gzip' || $coding === 'x-gzip') {
+                $gzipQ = max($gzipQ ?? 0.0, $q);
+            } elseif ($coding === '*') {
+                $wildcardQ = $q;
+            }
+        }
+
+        return ($gzipQ ?? $wildcardQ ?? 0.0) > 0.0;
     }
 
     protected function generateEtag(string $path, int $size, int $lastModified): string
