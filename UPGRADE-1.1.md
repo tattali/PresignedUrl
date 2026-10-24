@@ -1,8 +1,27 @@
 # Upgrading from 1.0 to 1.1
 
-1.1 keeps the 1.0 API: code and configuration written for 1.0 keep working. Some responses of `FileServer` (and of the Symfony and Laravel controllers) change. Read the sections below if your application relies on one of these behaviours.
+1.1 keeps the 1.0 interfaces and public methods. Two things can affect an existing application:
 
-URLs returned by `AwsS3Adapter` point to S3 directly and are not affected.
+- a signing secret under 32 bytes, or an unsafe signature length, now throws (first section below);
+- some responses of `FileServer` (and of the Symfony and Laravel controllers) change. Read the other sections if your application relies on one of these behaviours.
+
+URLs returned by `AwsS3Adapter` point to S3 directly and are not affected by the response changes.
+
+## Signing secrets must be at least 32 bytes
+
+What you see: building `Config` or `HmacSigner` throws `InvalidConfigurationException` with "The signing secret must be at least 32 bytes long. Generate one with bin2hex(random_bytes(32))." In the Symfony bundle the exception is thrown when the service is first built, not when the container is compiled. With Laravel, the fallback to `APP_KEY` keeps working with the default `AES-256-CBC` cipher (a 51-byte key), but an `AES-128-CBC` key (31 bytes) and a `PRESIGNED_STORAGE_SECRET` under 32 bytes throw.
+
+`SignatureConfig` throws the same exception when `length` is under 16 or above the digest size of the algorithm (32 bytes for `sha256`, 64 for `sha512`), or when the algorithm is not one of `hash_hmac_algos()`. 1.0 gave the full digest for a `length` above the digest size; set `length` to the digest size to keep those signatures.
+
+Why: anyone who guesses a short secret can sign URLs for any file in any bucket, and a short `length` lets signatures be brute-forced.
+
+To fix it, generate a new secret and put it in your configuration (for example in `PRESIGNED_URL_SECRET` or `PRESIGNED_STORAGE_SECRET`):
+
+```bash
+php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'
+```
+
+A new secret makes every URL issued with the old one fail with 403, so issue the URLs again. With a secret of 32 bytes or more and a valid `length`, nothing changes: the signature format is the same and existing URLs keep verifying.
 
 ## HTML, SVG, XML and JavaScript files are downloaded instead of displayed
 
@@ -32,9 +51,19 @@ presigned_url:
 
 ## Every file is sent with `X-Content-Type-Options: nosniff`
 
-What you see: browsers use the `Content-Type` of the response and no longer guess it. `LocalAdapter` detects the type from the file content, and most `.js` files are detected as `text/plain`. A browser refuses to run such a file loaded with `<script src="...">`.
+What you see: browsers use the `Content-Type` of the response and no longer guess it. A browser refuses to run a file loaded with `<script src="...">` whose type is not a JavaScript type, and to apply a stylesheet that is not `text/css`.
 
-There is no option to remove the header. To serve scripts, use a `FlysystemAdapter` bucket (Flysystem falls back to the file extension when the content gives `text/plain`) or an adapter that returns the stored `Content-Type`.
+`LocalAdapter` detects the type from the file content and, when that gives only a generic type (`text/plain`, `application/octet-stream`, an empty-file type or a `text/x-*` source-code guess), uses the file extension, so `.js`, `.mjs` and `.css` files get `text/javascript` and `text/css`. Flysystem's own detector falls back to the extension for `text/plain` and empty files only, so a `FlysystemAdapter` bucket can still give `text/x-java` or `text/x-c++` for some scripts. If you use your own adapter, make sure its `mimeType()` returns the real type.
+
+There is no option to remove the header.
+
+## `LocalAdapter` gives a more precise `Content-Type` for some files
+
+What you see: when `finfo` gives only a generic type for a file (`text/plain`, `application/octet-stream`, an empty-file type or a `text/x-*` guess), `LocalAdapter` now uses its extension. For example `.js`, `.mjs` and `.cjs` get `text/javascript`, `.css` gets `text/css`, `.json` and `.map` get `application/json`, `.md` gets `text/markdown`, `.csv` gets `text/csv`, `.ics` gets `text/calendar` and `.vtt` gets `text/vtt`. A type that `finfo` detects precisely is kept.
+
+- Browsers may download `.md`, `.csv` or `.ics` files that they used to show as text.
+- The default compression `types` include `text/javascript` and `text/css`, but not `text/csv`, `text/markdown` or `application/json`. Add the types you want compressed to `compression.types`.
+- Uploaded `.js` and `.css` files can now be loaded by other pages as scripts and stylesheets. If buckets hold files uploaded by users and are served from your application's domain, add `js`, `mjs`, `cjs` and `css` to `blocked_extensions`, or serve them from a separate domain.
 
 ## File names in `Content-Disposition` are encoded
 
