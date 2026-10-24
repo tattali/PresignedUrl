@@ -208,7 +208,7 @@ final class PresignedUrlFlowTest extends TestCase
         ]);
 
         self::assertSame(206, $response->getStatusCode());
-        self::assertSame('Hello', $response->getBody());
+        self::assertSame('Hello', stream_get_contents($response->getBody()));
         self::assertStringContainsString('bytes 0-4/', $response->getHeader('Content-Range') ?? '');
     }
 

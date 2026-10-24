@@ -7,6 +7,7 @@ namespace Tattali\PresignedUrl\Tests\Unit\Server;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Tattali\PresignedUrl\Adapter\AdapterInterface;
 use Tattali\PresignedUrl\Adapter\LocalAdapter;
 use Tattali\PresignedUrl\Config\CompressionConfig;
 use Tattali\PresignedUrl\Config\Config;
@@ -493,7 +494,7 @@ final class FileServerTest extends TestCase
             'Range' => 'bytes=1000-2000',
         ]);
 
-        self::assertSame(200, $response->getStatusCode());
+        self::assertSame(416, $response->getStatusCode());
     }
 
     #[Test]
@@ -693,6 +694,114 @@ final class FileServerTest extends TestCase
         ]);
 
         self::assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function it_serves_a_url_until_the_expiry_second_inclusive(): void
+    {
+        file_put_contents($this->tempDir . '/test.txt', 'Hello World');
+
+        // Retry until the request runs within a single second, so time() === $expires holds during serve().
+        do {
+            $expires = time();
+            $signature = $this->signer->sign('documents', 'test.txt', $expires);
+            $response = $this->server->serve('documents', 'test.txt', $expires, $signature);
+        } while (time() !== $expires);
+
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function it_returns_plain_text_error_responses(): void
+    {
+        $response = $this->server->serve('documents', 'test.txt', time() + 3600, 'invalid-signature');
+
+        self::assertSame(403, $response->getStatusCode());
+        self::assertSame('text/plain', $response->getHeader('Content-Type'));
+        self::assertSame('Forbidden', $response->getBody());
+    }
+
+    #[Test]
+    public function it_returns_plain_text_400_for_unparseable_request(): void
+    {
+        $response = $this->server->serveFromRequest('/documents/test.txt', []);
+
+        self::assertSame(400, $response->getStatusCode());
+        self::assertSame('text/plain', $response->getHeader('Content-Type'));
+    }
+
+    #[Test]
+    public function it_serves_nested_paths_from_request_uri(): void
+    {
+        mkdir($this->tempDir . '/a/b', 0755, true);
+        file_put_contents($this->tempDir . '/a/b/test.txt', 'Hello World');
+
+        $expires = time() + 3600;
+        $signature = $this->signer->sign('documents', 'a/b/test.txt', $expires);
+
+        $response = $this->server->serveFromRequest(
+            uri: '/documents/a/b/test.txt',
+            query: [
+                'X-Expires' => (string) $expires,
+                'X-Signature' => $signature,
+            ],
+        );
+
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    #[Test]
+    public function it_returns_400_and_logs_a_signed_path_traversal_attempt(): void
+    {
+        $config = new Config(
+            secret: 'test-secret',
+            baseUrl: 'https://cdn.example.com',
+        );
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('warning')
+            ->with('Bad request', self::callback(function (array $context): bool {
+                return $context['bucket'] === 'documents'
+                    && $context['path'] === '../secret.txt'
+                    && is_string($context['error'])
+                    && $context['error'] !== '';
+            }));
+
+        $signer = new HmacSigner($config->secret, $config->signature);
+        $storage = new Storage($config, $signer);
+        $storage->addBucket('documents', new LocalAdapter($this->tempDir));
+
+        $server = new FileServer($storage, $signer, $config, $logger);
+
+        $expires = time() + 3600;
+        $signature = $signer->sign('documents', '../secret.txt', $expires);
+
+        $response = $server->serve('documents', '../secret.txt', $expires, $signature);
+
+        self::assertSame(400, $response->getStatusCode());
+        self::assertSame('Bad Request', $response->getBody());
+    }
+
+    #[Test]
+    public function it_does_not_read_a_file_the_adapter_reports_missing(): void
+    {
+        $adapter = $this->createMock(AdapterInterface::class);
+        $adapter->method('exists')->willReturn(false);
+        $adapter->method('size')->willReturn(11);
+        $adapter->method('mimeType')->willReturn('text/plain');
+        $adapter->method('lastModified')->willReturn(1700000000);
+        $adapter->expects($this->never())->method('read');
+        $adapter->expects($this->never())->method('readStream');
+
+        $this->storage->addBucket('mocked', $adapter);
+
+        $expires = time() + 3600;
+        $signature = $this->signer->sign('mocked', 'test.txt', $expires);
+
+        $response = $this->server->serve('mocked', 'test.txt', $expires, $signature);
+
+        self::assertSame(404, $response->getStatusCode());
     }
 
     private function removeDirectory(string $dir): void

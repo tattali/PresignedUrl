@@ -339,8 +339,7 @@ class InvoiceController extends Controller
 
 Routes are automatically registered:
 
-- `GET /storage/serve/{bucket}/{path}` -> `presigned-url.serve`
-- `HEAD /storage/serve/{bucket}/{path}` -> `presigned-url.serve.head`
+- `GET /storage/serve/{bucket}/{path}` -> `presigned-url.serve` (also answers `HEAD`)
 
 ## URL Format
 
@@ -423,6 +422,14 @@ Access-Control-Expose-Headers: Content-Length, Content-Range, Accept-Ranges
 ```bash
 composer install
 vendor/bin/phpunit
+```
+
+## Mutation Testing
+
+[Infection](https://infection.github.io/) mutates the signing, URL and verification code (`src/Signer`, `src/Storage`, `src/Server`) and checks that the tests catch each change. It needs a coverage driver (PCOV or Xdebug).
+
+```bash
+vendor/bin/infection --threads=max
 ```
 
 ## Static Analysis
