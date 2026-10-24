@@ -493,7 +493,7 @@ final class FileServerTest extends TestCase
             'Range' => 'bytes=1000-2000',
         ]);
 
-        self::assertSame(200, $response->getStatusCode());
+        self::assertSame(416, $response->getStatusCode());
     }
 
     #[Test]
