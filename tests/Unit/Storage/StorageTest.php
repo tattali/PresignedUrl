@@ -23,7 +23,7 @@ final class StorageTest extends TestCase
     protected function setUp(): void
     {
         $this->config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
@@ -102,7 +102,7 @@ final class StorageTest extends TestCase
     public function it_respects_max_ttl(): void
     {
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
@@ -234,7 +234,7 @@ final class StorageTest extends TestCase
     #[Test]
     public function it_strips_trailing_slash_from_base_url(): void
     {
-        $config = new Config(secret: 'test-secret', baseUrl: 'https://cdn.example.com/');
+        $config = new Config(secret: 'test-secret-0123456789abcdef0123456789', baseUrl: 'https://cdn.example.com/');
         $storage = new Storage($config, new HmacSigner($config->secret, $config->signature));
         $storage->addBucket('documents', new LocalAdapter('/tmp'));
 

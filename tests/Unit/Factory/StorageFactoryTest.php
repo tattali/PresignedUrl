@@ -21,7 +21,7 @@ final class StorageFactoryTest extends TestCase
     public function it_creates_storage_instance(): void
     {
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
@@ -34,7 +34,7 @@ final class StorageFactoryTest extends TestCase
     public function it_creates_storage_with_server(): void
     {
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
