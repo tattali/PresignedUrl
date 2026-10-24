@@ -94,7 +94,17 @@ readonly class FileServer implements FileServerInterface
      */
     protected function logAndRespond(string $level, string $message, array $context, int $status, string $body): FileResponse
     {
-        $this->logger?->$level($message, $context);
+        match ($level) {
+            'emergency' => $this->logger?->emergency($message, $context),
+            'alert' => $this->logger?->alert($message, $context),
+            'critical' => $this->logger?->critical($message, $context),
+            'error' => $this->logger?->error($message, $context),
+            'warning' => $this->logger?->warning($message, $context),
+            'notice' => $this->logger?->notice($message, $context),
+            'info' => $this->logger?->info($message, $context),
+            'debug' => $this->logger?->debug($message, $context),
+            default => $this->logger?->log($level, $message, $context),
+        };
 
         return new FileResponse($status, ['Content-Type' => 'text/plain'], $body);
     }

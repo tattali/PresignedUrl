@@ -24,7 +24,7 @@ class BucketNameValidator
             throw new InvalidBucketNameException($name, sprintf('must be at most %d characters long', self::MAX_LENGTH));
         }
 
-        if (!preg_match(self::PATTERN, $name)) {
+        if (preg_match(self::PATTERN, $name) !== 1) {
             throw new InvalidBucketNameException($name, 'must contain only lowercase letters, numbers, and hyphens, and must start and end with a letter or number');
         }
 

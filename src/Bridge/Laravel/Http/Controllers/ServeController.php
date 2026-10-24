@@ -22,10 +22,8 @@ readonly class ServeController
 
         $headers = [];
         foreach ($request->headers->all() as $key => $values) {
-            if (is_array($values) && isset($values[0])) {
+            if (isset($values[0])) {
                 $headers[$key] = $values[0];
-            } elseif (is_string($values)) {
-                $headers[$key] = $values;
             }
         }
 

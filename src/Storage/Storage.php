@@ -95,7 +95,7 @@ class Storage implements StorageInterface
         }
 
         $expires = (int) $expiresValue;
-        $signature = (string) $signatureValue;
+        $signature = $signatureValue;
 
         if ($expires === 0 || $signature === '') {
             return null;

@@ -154,10 +154,15 @@ readonly class LocalAdapter implements AdapterInterface
             throw new InvalidPathException($path);
         }
 
-        $realFullPath = realpath($fullPath);
         $existingPath = $fullPath;
 
-        while ($realFullPath === false) {
+        while (true) {
+            $realFullPath = realpath($existingPath);
+
+            if ($realFullPath !== false) {
+                break;
+            }
+
             $parentPath = dirname($existingPath);
 
             if ($parentPath === $existingPath) {
@@ -165,7 +170,6 @@ readonly class LocalAdapter implements AdapterInterface
             }
 
             $existingPath = $parentPath;
-            $realFullPath = realpath($existingPath);
         }
 
         $basePrefix = rtrim($realBasePath, '/\\') . DIRECTORY_SEPARATOR;
