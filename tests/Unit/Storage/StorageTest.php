@@ -11,6 +11,7 @@ use Tattali\PresignedUrl\Adapter\AdapterInterface;
 use Tattali\PresignedUrl\Adapter\LocalAdapter;
 use Tattali\PresignedUrl\Config\Config;
 use Tattali\PresignedUrl\Exception\BucketNotFoundException;
+use Tattali\PresignedUrl\Exception\InvalidBucketNameException;
 use Tattali\PresignedUrl\Signer\HmacSigner;
 use Tattali\PresignedUrl\Storage\Storage;
 
@@ -22,7 +23,7 @@ final class StorageTest extends TestCase
     protected function setUp(): void
     {
         $this->config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
@@ -101,7 +102,7 @@ final class StorageTest extends TestCase
     public function it_respects_max_ttl(): void
     {
         $config = new Config(
-            secret: 'test-secret',
+            secret: 'test-secret-0123456789abcdef0123456789',
             baseUrl: 'https://cdn.example.com',
         );
 
@@ -186,6 +187,60 @@ final class StorageTest extends TestCase
         $this->storage->addBucket('invalid bucket name!', $adapter, false);
 
         self::assertTrue($this->storage->hasBucket('invalid bucket name!'));
+    }
+
+    #[Test]
+    public function it_validates_bucket_names_by_default(): void
+    {
+        $this->expectException(InvalidBucketNameException::class);
+
+        $this->storage->addBucket('invalid bucket name!', new LocalAdapter('/tmp'));
+    }
+
+    #[Test]
+    public function it_returns_null_for_url_without_path(): void
+    {
+        self::assertNull($this->storage->parseUrl('https://cdn.example.com?X-Expires=1700000000&X-Signature=abc'));
+    }
+
+    #[Test]
+    public function it_returns_null_when_only_expires_is_an_array(): void
+    {
+        $url = 'https://cdn.example.com/bucket/file.pdf?X-Expires[]=123&X-Signature=abc';
+
+        self::assertNull($this->storage->parseUrl($url));
+    }
+
+    #[Test]
+    public function it_returns_null_when_only_signature_is_an_array(): void
+    {
+        $url = 'https://cdn.example.com/bucket/file.pdf?X-Expires=123&X-Signature[]=abc';
+
+        self::assertNull($this->storage->parseUrl($url));
+    }
+
+    #[Test]
+    public function it_builds_a_url_whose_signature_verifies(): void
+    {
+        $signer = new HmacSigner($this->config->secret, $this->config->signature);
+        $this->storage->addBucket('documents', new LocalAdapter('/tmp'));
+
+        $components = $this->storage->parseUrl($this->storage->temporaryUrl('documents', 'path/to/file.pdf', 3600));
+
+        self::assertNotNull($components);
+        self::assertTrue($signer->verify($components->bucket, $components->path, $components->expires, $components->signature));
+    }
+
+    #[Test]
+    public function it_strips_trailing_slash_from_base_url(): void
+    {
+        $config = new Config(secret: 'test-secret-0123456789abcdef0123456789', baseUrl: 'https://cdn.example.com/');
+        $storage = new Storage($config, new HmacSigner($config->secret, $config->signature));
+        $storage->addBucket('documents', new LocalAdapter('/tmp'));
+
+        $url = $storage->temporaryUrl('documents', 'file.pdf', 3600);
+
+        self::assertStringStartsWith('https://cdn.example.com/documents/file.pdf?', $url);
     }
 
     #[Test]

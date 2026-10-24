@@ -55,6 +55,7 @@ class Storage implements StorageInterface
             }
         }
 
+        $path = ltrim($path, '/');
         $signature = $this->signer->sign($bucket, $path, $expires);
 
         return $this->buildUrl($bucket, $path, $expires, $signature);

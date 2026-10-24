@@ -53,6 +53,10 @@ return [
         'max_ttl' => 86400,
         'cache_control' => 'private, max-age=3600, must-revalidate',
         'content_disposition' => 'inline',
+        // HTML, SVG, XML and JavaScript files are always sent as a sandboxed
+        // attachment so they cannot run script on your domain. Set to true to
+        // serve them with 'content_disposition' instead (trusted files only).
+        'allow_unsafe_inline' => false,
         'compression' => [
             'enabled' => true,
             'min_size' => 1024,
