@@ -10,6 +10,40 @@ use Tattali\PresignedUrl\Exception\InvalidPathException;
 
 readonly class LocalAdapter implements AdapterInterface
 {
+    /**
+     * Types finfo reports when it cannot tell what a file is; the extension is more reliable then.
+     */
+    protected const GENERIC_MIME_TYPES = [
+        'text/plain',
+        'application/octet-stream',
+        'inode/x-empty',
+        'application/x-empty',
+    ];
+
+    protected const EXTENSION_MIME_TYPES = [
+        'js' => 'text/javascript',
+        'mjs' => 'text/javascript',
+        'cjs' => 'text/javascript',
+        'css' => 'text/css',
+        'svg' => 'image/svg+xml',
+        'html' => 'text/html',
+        'htm' => 'text/html',
+        'xhtml' => 'application/xhtml+xml',
+        'xml' => 'application/xml',
+        'json' => 'application/json',
+        'map' => 'application/json',
+        'webmanifest' => 'application/manifest+json',
+        'csv' => 'text/csv',
+        'md' => 'text/markdown',
+        'markdown' => 'text/markdown',
+        'txt' => 'text/plain',
+        'ics' => 'text/calendar',
+        'vtt' => 'text/vtt',
+        'wasm' => 'application/wasm',
+        'woff' => 'font/woff',
+        'woff2' => 'font/woff2',
+    ];
+
     public function __construct(
         protected string $basePath,
     ) {}
@@ -67,7 +101,13 @@ readonly class LocalAdapter implements AdapterInterface
         $finfo = new finfo(FILEINFO_MIME_TYPE);
         $mimeType = $finfo->file($fullPath);
 
-        return $mimeType !== false ? $mimeType : 'application/octet-stream';
+        if ($mimeType !== false && !in_array($mimeType, self::GENERIC_MIME_TYPES, true)) {
+            return $mimeType;
+        }
+
+        $extension = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+
+        return self::EXTENSION_MIME_TYPES[$extension] ?? ($mimeType !== false ? $mimeType : 'application/octet-stream');
     }
 
     public function lastModified(string $path): int
