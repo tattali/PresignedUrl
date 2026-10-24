@@ -87,7 +87,7 @@ jobs:
           vendor/bin/phpunit --colors=always --coverage-clover=build/coverage.xml --log-junit=build/test-results.xml
 
       - name: SonarQube Scan
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v8
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
