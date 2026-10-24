@@ -430,6 +430,8 @@ Access-Control-Expose-Headers: Content-Length, Content-Range, Accept-Ranges
 | `InvalidPathException` | Path traversal detected |
 | `InvalidSignatureException` | Invalid signature |
 | `ExpiredUrlException` | URL expired |
+| `InvalidBucketNameException` | Bucket name rejected by `Storage::addBucket()` |
+| `InvalidConfigurationException` | Secret under 32 bytes, signature length out of bounds or unknown algorithm. Extends `InvalidArgumentException`, not `PresignedUrlException` |
 
 ## HTTP Response Codes
 
@@ -475,7 +477,7 @@ Bucket names are validated by `Storage::addBucket()` (3 to 63 characters, lowerc
 
 `HmacSigner::verify()` recomputes the signature, rejects a signature whose length differs from the expected one, and compares it with `hash_equals()`, which takes the same time whatever the position of the first differing character. The comparison is case-sensitive: the signature must be lowercase hex.
 
-`FileServer` checks the signature before anything else (`FileServer::doServe()`). An unsigned request gets 403 whether or not the bucket, the file or the expiry are valid.
+`FileServer` checks the signature before anything else (`FileServer::doServe()`). An unsigned request to `serve()` gets 403 whether or not the bucket, the file or the expiry are valid.
 
 ### Expiry
 
@@ -485,7 +487,7 @@ Bucket names are validated by `Storage::addBucket()` (3 to 63 characters, lowerc
 - `FileServer::validateExpiration()` rejects a request with 410 when `time() > expires`, so a URL is valid up to and including its expiry second.
 - The expiry is signed, so it cannot be changed without the secret. The server does not apply `maxTtl` to incoming URLs: a URL signed with a far expiry stays valid until then.
 - Both checks use the local clock. Servers that generate and serve URLs need synchronised clocks.
-- A missing, non-numeric or zero `X-Expires` gives 400.
+- `FileServer::serveFromRequest()` answers 400, before it checks the signature, when `X-Expires` is missing, zero or not a number, or `X-Signature` is missing. `serve()`, which the Symfony and Laravel controllers call, takes these values as arguments and answers 403 for them.
 
 ### Paths
 
@@ -513,6 +515,7 @@ Bucket names are validated by `Storage::addBucket()` (3 to 63 characters, lowerc
 - **Leaks.** The signature is in the query string, so it ends up in access logs, browser history and `Referer` headers.
 - **Scriptable files with `allow_unsafe_inline`.** When it is `true`, HTML, SVG, XML and JavaScript files are served with `content_disposition` and without `Content-Security-Policy: sandbox`, so their scripts run on the serving domain.
 - **Other inline content.** Files that are not recognised as scriptable (see [Content Safety](#content-safety)) are displayed inline with the default `content_disposition`. Detection relies on the extension and on the `Content-Type` reported by the adapter. If buckets hold files uploaded by users, also consider `content_disposition: attachment` or a separate, cookieless domain.
+- **Uploaded scripts and stylesheets.** `.js` and `.css` files are served with their real type, so a page on any origin can load them with `<script src>` or as a stylesheet: `Content-Disposition: attachment` and `Content-Security-Policy: sandbox` do not prevent that. When buckets hold files uploaded by users and are served from your application's domain, a `script-src 'self'` policy does not stop an uploaded script. Add `js`, `mjs`, `cjs` and `css` to `blocked_extensions` (it applies to every bucket), or serve the files from a separate domain.
 - **CORS.** With an empty `allowedOrigins` list (the default), any `Origin` is echoed back in `Access-Control-Allow-Origin`.
 - **Native S3 URLs.** For `AwsS3Adapter` buckets the client downloads directly from S3, so the extension and size checks, content safety headers, CORS settings and logging of `FileServer` do not apply. Access is governed by S3 and your IAM permissions.
 - **Confidentiality.** The HMAC proves that a URL was issued with the secret. It does not encrypt anything: serve over HTTPS.
