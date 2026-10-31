@@ -199,7 +199,7 @@ final class FlysystemAdapterTest extends TestCase
     #[Test]
     public function it_does_not_support_native_presigned_urls(): void
     {
-        $filesystem = $this->createMock(FilesystemOperator::class);
+        $filesystem = self::createStub(FilesystemOperator::class);
         $adapter = new FlysystemAdapter($filesystem);
 
         self::assertFalse($adapter->supportsNativePresignedUrl());

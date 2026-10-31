@@ -7,7 +7,6 @@ namespace Tattali\PresignedUrl\Tests\Unit\Bridge\Symfony\Controller;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\HeaderBag;
-use Symfony\Component\HttpFoundation\InputBag;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tattali\PresignedUrl\Bridge\Symfony\Controller\ServeController;
@@ -253,11 +252,10 @@ final class ServeControllerTest extends TestCase
             ->method('serve')
             ->willReturn($fileResponse);
 
-        $request = $this->createMock(Request::class);
-        $request->query = new InputBag([
+        $request = new Request([
             'X-Expires' => '1234567890',
             'X-Signature' => 'abc123',
-        ]);
+        ], [], [], [], [], ['REQUEST_METHOD' => 'GET']);
 
         // Create a custom HeaderBag mock that returns string values
         $headerBag = $this->createMock(HeaderBag::class);
@@ -265,10 +263,6 @@ final class ServeControllerTest extends TestCase
             ->method('all')
             ->willReturn(['accept' => 'text/plain']);
         $request->headers = $headerBag;
-
-        $request->expects($this->any())
-            ->method('getMethod')
-            ->willReturn('GET');
 
         $controller = new ServeController($fileServer);
         $response = $controller($request, 'bucket', 'file.txt');
@@ -305,13 +299,8 @@ final class ServeControllerTest extends TestCase
      */
     private function createRequest(string $method, array $query, array $headers = []): Request
     {
-        $request = $this->createMock(Request::class);
-        $request->query = new InputBag($query);
+        $request = new Request($query, [], [], [], [], ['REQUEST_METHOD' => $method]);
         $request->headers = new HeaderBag(array_change_key_case($headers, CASE_LOWER));
-
-        $request->expects($this->any())
-            ->method('getMethod')
-            ->willReturn($method);
 
         return $request;
     }

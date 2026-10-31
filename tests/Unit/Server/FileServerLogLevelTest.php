@@ -33,6 +33,9 @@ final class FileServerLogLevelTest extends TestCase
         ];
     }
 
+    /**
+     * @param non-empty-string $level
+     */
     #[Test]
     #[DataProvider('levels')]
     public function it_logs_through_the_method_named_after_the_level(string $level): void
