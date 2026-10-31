@@ -7,6 +7,7 @@ namespace Tattali\PresignedUrl\Tests\Unit\Bridge\Laravel\Fixtures;
 use Illuminate\Container\Container;
 use Illuminate\Contracts\Foundation\Application;
 use LogicException;
+use UnitEnum;
 
 /**
  * A container that satisfies the Application contract for providers that only use container methods.
@@ -59,7 +60,7 @@ final class TestApplication extends Container implements Application
     }
 
     /**
-     * @param array<mixed>|string ...$environments
+     * @param array<mixed>|string|UnitEnum ...$environments
      */
     public function environment(mixed ...$environments): never
     {
