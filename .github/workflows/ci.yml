@@ -124,6 +124,9 @@ jobs:
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse --no-progress --error-format=github
 
+      - name: Check Composer dependencies
+        run: vendor/bin/composer-dependency-analyser
+
   cs-fixer:
     name: PHP CS Fixer
     runs-on: ubuntu-latest
