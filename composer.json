@@ -41,6 +41,7 @@
         "symfony/routing": "^6.4|^7.0|^8.0"
     },
     "suggest": {
+        "ext-zlib": "Required to gzip-compress responses; without it files are served uncompressed",
         "symfony/http-foundation": "Required for Symfony integration",
         "symfony/http-kernel": "Required for Symfony bundle",
         "illuminate/support": "Required for Laravel integration",

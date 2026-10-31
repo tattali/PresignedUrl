@@ -486,10 +486,22 @@ readonly class FileServer implements FileServerInterface
     }
 
     /**
+     * ext-zlib is optional: without it files are served uncompressed.
+     */
+    protected function isZlibAvailable(): bool
+    {
+        return function_exists('gzencode');
+    }
+
+    /**
      * @param array<string, string> $requestHeaders
      */
     protected function acceptsGzip(array $requestHeaders): bool
     {
+        if (!$this->isZlibAvailable()) {
+            return false;
+        }
+
         $value = null;
         foreach ($requestHeaders as $name => $v) {
             if (strtolower($name) === 'accept-encoding') {
