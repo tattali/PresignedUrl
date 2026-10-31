@@ -7,6 +7,7 @@ namespace Tattali\PresignedUrl\Tests\Unit\Signer;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use Tattali\PresignedUrl\Config\SignatureConfig;
 use Tattali\PresignedUrl\Exception\InvalidConfigurationException;
 use Tattali\PresignedUrl\Signer\HmacSigner;
@@ -45,7 +46,7 @@ final class HmacSignerHardeningTest extends TestCase
     #[Test]
     public function it_exposes_the_minimum_secret_length(): void
     {
-        self::assertSame(32, HmacSigner::MIN_SECRET_LENGTH);
+        self::assertSame(32, (new ReflectionClass(HmacSigner::class))->getConstant('MIN_SECRET_LENGTH'));
     }
 
     #[Test]

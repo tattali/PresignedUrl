@@ -14,6 +14,7 @@ readonly class LocalAdapter implements AdapterInterface
      * Types finfo reports when it cannot tell what a file is; the extension is more reliable then.
      * Every text/x-* result (libmagic's unregistered source-code guesses) is generic too.
      */
+    /** @var list<string> */
     protected const GENERIC_MIME_TYPES = [
         'text/plain',
         'application/octet-stream',
@@ -21,6 +22,7 @@ readonly class LocalAdapter implements AdapterInterface
         'application/x-empty',
     ];
 
+    /** @var array<string, string> */
     protected const EXTENSION_MIME_TYPES = [
         'js' => 'text/javascript',
         'mjs' => 'text/javascript',

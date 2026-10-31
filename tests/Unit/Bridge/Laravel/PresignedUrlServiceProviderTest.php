@@ -90,7 +90,6 @@ final class PresignedUrlServiceProviderTest extends TestCase
 
         $config = $this->app->make(Config::class);
 
-        self::assertInstanceOf(Config::class, $config);
         self::assertSame('test-secret-key-0123456789abcdef0123456789', $config->secret);
         self::assertSame('https://cdn.example.com', $config->baseUrl);
     }

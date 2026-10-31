@@ -64,7 +64,7 @@ final class FileServerLogLevelTest extends TestCase
         return new LogLevelFileServer(
             self::createStub(StorageInterface::class),
             self::createStub(SignerInterface::class),
-            new Config(secret: 'secret', baseUrl: 'https://cdn.example.com'),
+            new Config(secret: 'test-secret-0123456789abcdef0123456789', baseUrl: 'https://cdn.example.com'),
             $logger,
         );
     }
