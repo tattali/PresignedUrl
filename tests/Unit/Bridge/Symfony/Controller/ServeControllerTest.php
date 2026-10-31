@@ -9,7 +9,6 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\HeaderBag;
 use Symfony\Component\HttpFoundation\InputBag;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tattali\PresignedUrl\Bridge\Symfony\Controller\ServeController;
 use Tattali\PresignedUrl\Server\FileResponse;
@@ -29,7 +28,7 @@ final class ServeControllerTest extends TestCase
         $fileServer = $this->createMock(FileServerInterface::class);
         $fileServer->expects($this->once())
             ->method('serve')
-            ->with('documents', 'test.txt', 1234567890, 'abc123', 'GET', $this->isType('array'))
+            ->with('documents', 'test.txt', 1234567890, 'abc123', 'GET', self::callback(static fn(mixed $headers): bool => is_array($headers)))
             ->willReturn($fileResponse);
 
         $request = $this->createRequest('GET', [
@@ -40,7 +39,6 @@ final class ServeControllerTest extends TestCase
         $controller = new ServeController($fileServer);
         $response = $controller($request, 'documents', 'test.txt');
 
-        self::assertInstanceOf(Response::class, $response);
         self::assertSame(200, $response->getStatusCode());
         self::assertSame('Hello World', $response->getContent());
         self::assertSame('text/plain', $response->headers->get('Content-Type'));
@@ -50,6 +48,7 @@ final class ServeControllerTest extends TestCase
     public function it_serves_file_with_stream_body(): void
     {
         $stream = fopen('php://memory', 'rb+');
+        self::assertIsResource($stream);
         fwrite($stream, 'Stream content');
         rewind($stream);
 
@@ -97,7 +96,6 @@ final class ServeControllerTest extends TestCase
         $controller = new ServeController($fileServer);
         $response = $controller($request, 'bucket', 'file.txt');
 
-        self::assertInstanceOf(Response::class, $response);
         self::assertSame(204, $response->getStatusCode());
         self::assertSame('', $response->getContent());
     }
@@ -192,7 +190,7 @@ final class ServeControllerTest extends TestCase
                 1234567890,
                 'abc123',
                 'GET',
-                $this->callback(function (array $headers): bool {
+                self::callback(function (array $headers): bool {
                     return isset($headers['range']) && $headers['range'] === 'bytes=0-100';
                 }),
             )
@@ -290,7 +288,7 @@ final class ServeControllerTest extends TestCase
         $fileServer = $this->createMock(FileServerInterface::class);
         $fileServer->expects($this->once())
             ->method('serve')
-            ->with('bucket', 'file.txt', 0, '', 'GET', $this->isType('array'))
+            ->with('bucket', 'file.txt', 0, '', 'GET', self::callback(static fn(mixed $headers): bool => is_array($headers)))
             ->willReturn($fileResponse);
 
         $request = $this->createRequest('GET', []);

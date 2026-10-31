@@ -229,7 +229,7 @@ final class FileServerTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())
             ->method('info')
-            ->with('File served', $this->callback(function (array $context): bool {
+            ->with('File served', self::callback(function (array $context): bool {
                 return $context['bucket'] === 'documents'
                     && $context['path'] === 'test.txt'
                     && $context['status'] === 200;
@@ -260,7 +260,7 @@ final class FileServerTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())
             ->method('warning')
-            ->with('Invalid signature', $this->callback(function (array $context): bool {
+            ->with('Invalid signature', self::callback(function (array $context): bool {
                 return $context['bucket'] === 'documents' && $context['path'] === 'test.txt';
             }));
 
@@ -288,7 +288,7 @@ final class FileServerTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())
             ->method('info')
-            ->with('Expired URL', $this->callback(function (array $context): bool {
+            ->with('Expired URL', self::callback(function (array $context): bool {
                 return $context['bucket'] === 'documents' && $context['path'] === 'test.txt';
             }));
 
@@ -373,7 +373,7 @@ final class FileServerTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())
             ->method('info')
-            ->with('File not found', $this->callback(function (array $context): bool {
+            ->with('File not found', self::callback(function (array $context): bool {
                 return $context['bucket'] === 'documents' && $context['path'] === 'missing.txt';
             }));
 
@@ -644,7 +644,7 @@ final class FileServerTest extends TestCase
         $logger = $this->createMock(LoggerInterface::class);
         $logger->expects($this->once())
             ->method('info')
-            ->with('File not found', $this->anything());
+            ->with('File not found', self::anything());
 
         $signer = new HmacSigner($config->secret, $config->signature);
         $storage = new Storage($config, $signer);
@@ -810,7 +810,8 @@ final class FileServerTest extends TestCase
             return;
         }
 
-        $files = array_diff(scandir($dir) ?: [], ['.', '..']);
+        $entries = scandir($dir);
+        $files = array_diff($entries === false ? [] : $entries, ['.', '..']);
 
         foreach ($files as $file) {
             $path = $dir . '/' . $file;

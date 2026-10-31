@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use Tattali\PresignedUrl\Config\Config;
 use Tattali\PresignedUrl\Config\SignatureConfig;
 use Tattali\PresignedUrl\Exception\InvalidConfigurationException;
@@ -17,13 +18,13 @@ final class SignatureConfigValidationTest extends TestCase
     #[Test]
     public function the_exception_is_an_invalid_argument_exception(): void
     {
-        self::assertTrue(is_subclass_of(InvalidConfigurationException::class, InvalidArgumentException::class));
+        self::assertTrue((new ReflectionClass(InvalidConfigurationException::class))->isSubclassOf(InvalidArgumentException::class));
     }
 
     #[Test]
     public function it_exposes_the_minimum_length(): void
     {
-        self::assertSame(16, SignatureConfig::MIN_LENGTH);
+        self::assertSame(16, (new ReflectionClass(SignatureConfig::class))->getConstant('MIN_LENGTH'));
     }
 
     #[Test]

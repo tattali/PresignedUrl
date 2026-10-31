@@ -34,7 +34,9 @@ final class FileServerRangeTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (glob($this->tempDir . '/*') ?: [] as $file) {
+        $files = glob($this->tempDir . '/*');
+
+        foreach ($files === false ? [] : $files as $file) {
             unlink($file);
         }
         rmdir($this->tempDir);
@@ -278,7 +280,7 @@ final class FileServerRangeTest extends TestCase
             return $content === false ? '' : $content;
         }
 
-        return $body ?? '';
+        return is_string($body) ? $body : '';
     }
 }
 
@@ -306,6 +308,14 @@ final class ShortReadStream
     /** @var resource|null */
     private $handle = null;
 
+    /**
+     * @return resource
+     */
+    private function handle()
+    {
+        return $this->handle ?? throw new RuntimeException('The short-read stream is not open');
+    }
+
     public function stream_open(string $path, string $mode, int $options, ?string &$openedPath): bool
     {
         $handle = fopen(self::$filePath, 'rb');
@@ -320,32 +330,32 @@ final class ShortReadStream
 
     public function stream_read(int $count): string|false
     {
-        return fread($this->handle, min($count, 8));
+        return fread($this->handle(), max(1, min($count, 8)));
     }
 
     public function stream_eof(): bool
     {
-        return feof($this->handle);
+        return feof($this->handle());
     }
 
     public function stream_seek(int $offset, int $whence = SEEK_SET): bool
     {
-        return self::$allowSeek && fseek($this->handle, $offset, $whence) === 0;
+        return self::$allowSeek && fseek($this->handle(), $offset, $whence) === 0;
     }
 
     public function stream_tell(): int|false
     {
-        return ftell($this->handle);
+        return ftell($this->handle());
     }
 
     /** @return array<int|string, int>|false */
     public function stream_stat(): array|false
     {
-        return fstat($this->handle);
+        return fstat($this->handle());
     }
 
     public function stream_close(): void
     {
-        fclose($this->handle);
+        fclose($this->handle());
     }
 }

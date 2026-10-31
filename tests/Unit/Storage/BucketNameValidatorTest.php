@@ -15,7 +15,7 @@ final class BucketNameValidatorTest extends TestCase
     public function testValidBucketNames(string $name): void
     {
         BucketNameValidator::validate($name);
-        $this->assertTrue(BucketNameValidator::isValid($name));
+        self::assertTrue(BucketNameValidator::isValid($name));
     }
 
     /**
@@ -60,8 +60,8 @@ final class BucketNameValidatorTest extends TestCase
 
     public function testIsValidReturnsFalseForInvalidName(): void
     {
-        $this->assertFalse(BucketNameValidator::isValid('ab'));
-        $this->assertFalse(BucketNameValidator::isValid('MyBucket'));
-        $this->assertFalse(BucketNameValidator::isValid('my--bucket'));
+        self::assertFalse(BucketNameValidator::isValid('ab'));
+        self::assertFalse(BucketNameValidator::isValid('MyBucket'));
+        self::assertFalse(BucketNameValidator::isValid('my--bucket'));
     }
 }

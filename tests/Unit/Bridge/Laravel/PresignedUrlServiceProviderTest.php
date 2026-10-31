@@ -7,6 +7,7 @@ namespace Tattali\PresignedUrl\Tests\Unit\Bridge\Laravel;
 use Illuminate\Config\Repository;
 use Illuminate\Container\Container;
 use League\Flysystem\FilesystemOperator;
+use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -20,14 +21,15 @@ use Tattali\PresignedUrl\Signer\HmacSigner;
 use Tattali\PresignedUrl\Signer\SignerInterface;
 use Tattali\PresignedUrl\Storage\Storage;
 use Tattali\PresignedUrl\Storage\StorageInterface;
+use Tattali\PresignedUrl\Tests\Unit\Bridge\Laravel\Fixtures\TestApplication;
 
 final class PresignedUrlServiceProviderTest extends TestCase
 {
-    private Container $app;
+    private TestApplication $app;
 
     protected function setUp(): void
     {
-        $this->app = new Container();
+        $this->app = new TestApplication();
         Container::setInstance($this->app);
 
         $this->app->singleton('config', function () {
@@ -70,6 +72,14 @@ final class PresignedUrlServiceProviderTest extends TestCase
         Container::setInstance(null);
     }
 
+    private function config(): Repository
+    {
+        $config = $this->app->make('config');
+        self::assertInstanceOf(Repository::class, $config);
+
+        return $config;
+    }
+
     #[Test]
     public function it_registers_config_service(): void
     {
@@ -80,7 +90,6 @@ final class PresignedUrlServiceProviderTest extends TestCase
 
         $config = $this->app->make(Config::class);
 
-        self::assertInstanceOf(Config::class, $config);
         self::assertSame('test-secret-key-0123456789abcdef0123456789', $config->secret);
         self::assertSame('https://cdn.example.com', $config->baseUrl);
     }
@@ -143,12 +152,12 @@ final class PresignedUrlServiceProviderTest extends TestCase
     #[Test]
     public function it_creates_config_with_custom_signature_settings(): void
     {
-        $this->app['config']['presigned-url.signature'] = [
+        $this->config()->set('presigned-url.signature', [
             'algorithm' => 'sha512',
             'length' => 32,
             'expires_param' => 'exp',
             'signature_param' => 'sig',
-        ];
+        ]);
 
         $provider = new TestablePresignedUrlServiceProvider($this->app);
         $provider->register();
@@ -165,7 +174,7 @@ final class PresignedUrlServiceProviderTest extends TestCase
     #[Test]
     public function it_creates_config_with_custom_serving_settings(): void
     {
-        $this->app['config']['presigned-url.serving'] = [
+        $this->config()->set('presigned-url.serving', [
             'default_ttl' => 7200,
             'max_ttl' => 43200,
             'cache_control' => 'public, max-age=7200',
@@ -176,7 +185,7 @@ final class PresignedUrlServiceProviderTest extends TestCase
                 'level' => 9,
                 'types' => [],
             ],
-        ];
+        ]);
 
         $provider = new TestablePresignedUrlServiceProvider($this->app);
         $provider->register();
@@ -194,12 +203,12 @@ final class PresignedUrlServiceProviderTest extends TestCase
     #[Test]
     public function it_creates_config_with_security_settings(): void
     {
-        $this->app['config']['presigned-url.security'] = [
+        $this->config()->set('presigned-url.security', [
             'allowed_extensions' => ['pdf', 'jpg'],
             'blocked_extensions' => ['exe'],
             'max_file_size' => 10485760,
             'allowed_origins' => ['https://app.example.com'],
-        ];
+        ]);
 
         $provider = new TestablePresignedUrlServiceProvider($this->app);
         $provider->register();
@@ -219,12 +228,12 @@ final class PresignedUrlServiceProviderTest extends TestCase
         mkdir($tempDir, 0755, true);
 
         try {
-            $this->app['config']['presigned-url.buckets'] = [
+            $this->config()->set('presigned-url.buckets', [
                 'documents' => [
                     'adapter' => 'local',
                     'path' => $tempDir,
                 ],
-            ];
+            ]);
 
             $provider = new TestablePresignedUrlServiceProvider($this->app);
             $provider->register();
@@ -246,12 +255,12 @@ final class PresignedUrlServiceProviderTest extends TestCase
         file_put_contents($tempDir . '/test.txt', 'Hello');
 
         try {
-            $this->app['config']['presigned-url.buckets'] = [
+            $this->config()->set('presigned-url.buckets', [
                 'files' => [
                     'adapter' => 'local',
                     'path' => $tempDir,
                 ],
-            ];
+            ]);
 
             $provider = new TestablePresignedUrlServiceProvider($this->app);
             $provider->register();
@@ -295,7 +304,7 @@ final class PresignedUrlServiceProviderTest extends TestCase
     #[Test]
     public function it_registers_s3_bucket(): void
     {
-        $this->app['config']['presigned-url.buckets'] = [
+        $this->config()->set('presigned-url.buckets', [
             's3files' => [
                 'adapter' => 's3',
                 'key' => 'AKIAIOSFODNN7EXAMPLE',
@@ -303,7 +312,7 @@ final class PresignedUrlServiceProviderTest extends TestCase
                 'bucket' => 'my-s3-bucket',
                 'region' => 'us-east-1',
             ],
-        ];
+        ]);
 
         $provider = new TestablePresignedUrlServiceProvider($this->app);
         $provider->register();
@@ -320,7 +329,7 @@ final class PresignedUrlServiceProviderTest extends TestCase
     #[Test]
     public function it_registers_s3_bucket_with_endpoint(): void
     {
-        $this->app['config']['presigned-url.buckets'] = [
+        $this->config()->set('presigned-url.buckets', [
             'minio' => [
                 'adapter' => 's3',
                 'key' => 'minioadmin',
@@ -329,7 +338,7 @@ final class PresignedUrlServiceProviderTest extends TestCase
                 'region' => 'us-east-1',
                 'endpoint' => 'http://localhost:9000',
             ],
-        ];
+        ]);
 
         $provider = new TestablePresignedUrlServiceProvider($this->app);
         $provider->register();
@@ -346,12 +355,12 @@ final class PresignedUrlServiceProviderTest extends TestCase
         $filesystem = $this->createMock(FilesystemOperator::class);
         $this->app->bind('my.flysystem.service', fn() => $filesystem);
 
-        $this->app['config']['presigned-url.buckets'] = [
+        $this->config()->set('presigned-url.buckets', [
             'flysystem-bucket' => [
                 'adapter' => 'flysystem',
                 'service' => 'my.flysystem.service',
             ],
-        ];
+        ]);
 
         $provider = new TestablePresignedUrlServiceProvider($this->app);
         $provider->register();
@@ -382,9 +391,9 @@ final class PresignedUrlServiceProviderTest extends TestCase
     #[Test]
     public function it_uses_default_values_when_config_not_set(): void
     {
-        $this->app['config']['presigned-url.signature'] = [];
-        $this->app['config']['presigned-url.serving'] = [];
-        $this->app['config']['presigned-url.security'] = [];
+        $this->config()->set('presigned-url.signature', []);
+        $this->config()->set('presigned-url.serving', []);
+        $this->config()->set('presigned-url.security', []);
 
         $provider = new TestablePresignedUrlServiceProvider($this->app);
         $provider->register();
@@ -403,31 +412,34 @@ final class PresignedUrlServiceProviderTest extends TestCase
 
 /**
  * Test-friendly service provider that skips file-based config loading.
+ *
+ * @phpstan-import-type PresignedUrlConfig from PresignedUrlServiceProvider
+ * @phpstan-import-type BucketConfig from PresignedUrlServiceProvider
  */
 class TestablePresignedUrlServiceProvider extends PresignedUrlServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton(Config::class, function ($app): Config {
-            /** @var array<string, mixed> $config */
-            $config = $app['config']['presigned-url'];
+        $this->app->singleton(Config::class, function (Container $app): Config {
+            /** @var PresignedUrlConfig $config */
+            $config = self::configRepository($app)->get('presigned-url');
 
             return $this->buildConfig($config);
         });
 
-        $this->app->singleton(SignerInterface::class, function ($app): SignerInterface {
+        $this->app->singleton(SignerInterface::class, function (Container $app): SignerInterface {
             $config = $app->make(Config::class);
 
             return new \Tattali\PresignedUrl\Signer\HmacSigner($config->secret, $config->signature);
         });
 
-        $this->app->singleton(StorageInterface::class, function ($app): StorageInterface {
+        $this->app->singleton(StorageInterface::class, function (Container $app): StorageInterface {
             $config = $app->make(Config::class);
             $signer = $app->make(SignerInterface::class);
             $storage = new \Tattali\PresignedUrl\Storage\Storage($config, $signer);
 
-            /** @var array<string, array<string, mixed>> $buckets */
-            $buckets = $app['config']['presigned-url.buckets'] ?? [];
+            /** @var array<string, BucketConfig> $buckets */
+            $buckets = self::configRepository($app)->get('presigned-url.buckets') ?? [];
 
             foreach ($buckets as $name => $bucketConfig) {
                 $adapter = $this->createAdapter($app, $bucketConfig);
@@ -437,7 +449,7 @@ class TestablePresignedUrlServiceProvider extends PresignedUrlServiceProvider
             return $storage;
         });
 
-        $this->app->singleton(FileServerInterface::class, function ($app): FileServerInterface {
+        $this->app->singleton(FileServerInterface::class, function (Container $app): FileServerInterface {
             return new \Tattali\PresignedUrl\Server\FileServer(
                 $app->make(StorageInterface::class),
                 $app->make(SignerInterface::class),
@@ -446,6 +458,14 @@ class TestablePresignedUrlServiceProvider extends PresignedUrlServiceProvider
         });
 
         $this->app->alias(StorageInterface::class, 'presigned-url');
+    }
+
+    protected static function configRepository(Container $app): Repository
+    {
+        $config = $app->make('config');
+        Assert::assertInstanceOf(Repository::class, $config);
+
+        return $config;
     }
 }
 
@@ -458,7 +478,7 @@ class TestablePresignedUrlServiceProviderWithLogger extends TestablePresignedUrl
     {
         parent::register();
 
-        $this->app->singleton(FileServerInterface::class, function ($app): FileServerInterface {
+        $this->app->singleton(FileServerInterface::class, function (Container $app): FileServerInterface {
             $logger = $app->bound(\Psr\Log\LoggerInterface::class)
                 ? $app->make(\Psr\Log\LoggerInterface::class)
                 : null;

@@ -75,6 +75,7 @@ final class FlysystemAdapterTest extends TestCase
     public function it_reads_file_as_stream(): void
     {
         $stream = fopen('php://memory', 'rb+');
+        self::assertIsResource($stream);
         fwrite($stream, 'Hello World');
         rewind($stream);
 

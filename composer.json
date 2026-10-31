@@ -17,6 +17,7 @@
     "require-dev": {
         "aws/aws-sdk-php": "^3.0",
         "friendsofphp/php-cs-fixer": "^3.40",
+        "guzzlehttp/psr7": "^1.9.1|^2.4.5",
         "illuminate/config": "^12.44",
         "illuminate/container": "^12.44",
         "illuminate/contracts": "^10.0|^11.0|^12.0",
@@ -25,7 +26,11 @@
         "illuminate/support": "^10.0|^11.0|^12.0",
         "infection/infection": "^0.32.6 || ^0.35.8",
         "league/flysystem": "^3.0",
-        "phpstan/phpstan": "^1.10|^2.0",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-deprecation-rules": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0",
         "phpunit/phpunit": "^10.5|^11.0",
         "psr/log": "^1.0|^2.0|^3.0",
         "shipmonk/composer-dependency-analyser": "^1.8",
@@ -66,7 +71,8 @@
     "config": {
         "sort-packages": true,
         "allow-plugins": {
-            "infection/extension-installer": true
+            "infection/extension-installer": true,
+            "phpstan/extension-installer": true
         }
     },
     "minimum-stability": "stable"

@@ -26,7 +26,7 @@ final class LocalAdapterMimeTypeTest extends TestCase
 
     protected function tearDown(): void
     {
-        foreach (array_diff(scandir($this->tempDir) ?: [], ['.', '..']) as $file) {
+        foreach (array_diff(scandir($this->tempDir) !== false ? scandir($this->tempDir) : [], ['.', '..']) as $file) {
             unlink($this->tempDir . '/' . $file);
         }
 

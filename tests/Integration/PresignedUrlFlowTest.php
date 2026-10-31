@@ -208,7 +208,9 @@ final class PresignedUrlFlowTest extends TestCase
         ]);
 
         self::assertSame(206, $response->getStatusCode());
-        self::assertSame('Hello', stream_get_contents($response->getBody()));
+        $body = $response->getBody();
+        self::assertIsResource($body);
+        self::assertSame('Hello', stream_get_contents($body));
         self::assertStringContainsString('bytes 0-4/', $response->getHeader('Content-Range') ?? '');
     }
 
@@ -387,7 +389,8 @@ final class PresignedUrlFlowTest extends TestCase
             return;
         }
 
-        $files = array_diff(scandir($dir) ?: [], ['.', '..']);
+        $entries = scandir($dir);
+        $files = array_diff($entries === false ? [] : $entries, ['.', '..']);
 
         foreach ($files as $file) {
             $path = $dir . '/' . $file;

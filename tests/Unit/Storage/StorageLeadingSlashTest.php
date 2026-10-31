@@ -84,7 +84,14 @@ final class StorageLeadingSlashTest extends TestCase
     {
         parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
 
-        return array_map(static fn(mixed $v): string => (string) $v, $query);
+        $params = [];
+        foreach ($query as $key => $value) {
+            if (is_string($value)) {
+                $params[(string) $key] = $value;
+            }
+        }
+
+        return $params;
     }
 
     private function body(mixed $body): string
@@ -93,6 +100,6 @@ final class StorageLeadingSlashTest extends TestCase
             return (string) stream_get_contents($body);
         }
 
-        return (string) $body;
+        return is_string($body) ? $body : '';
     }
 }

@@ -1,0 +1,18 @@
+<?php
+
+/**
+ * Laravel's env() returns the variable as a string, true/false/null for the
+ * keywords "true", "false", "null" and their parenthesised forms, or the default.
+ *
+ * @template TDefault
+ *
+ * @param TDefault $default
+ *
+ * @return string|bool|TDefault|null
+ */
+function env(string $key, mixed $default = null): mixed {}
+
+/**
+ * Defined by laravel/framework (Illuminate/Foundation/helpers.php), which this package does not install.
+ */
+function config_path(string $path = ''): string {}

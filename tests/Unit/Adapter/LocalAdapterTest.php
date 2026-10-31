@@ -156,7 +156,8 @@ final class LocalAdapterTest extends TestCase
             return;
         }
 
-        $files = array_diff(scandir($dir) ?: [], ['.', '..']);
+        $entries = scandir($dir);
+        $files = array_diff($entries === false ? [] : $entries, ['.', '..']);
 
         foreach ($files as $file) {
             $path = $dir . '/' . $file;

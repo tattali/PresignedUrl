@@ -350,6 +350,7 @@ final class PresignedUrlExtensionTest extends TestCase
         $methodCalls = $storageDef->getMethodCalls();
 
         self::assertNotEmpty($methodCalls);
+        self::assertIsArray($methodCalls[0]);
         self::assertSame('addBucket', $methodCalls[0][0]);
     }
 

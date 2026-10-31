@@ -74,6 +74,7 @@ final class FileResponseTest extends TestCase
     public function it_returns_stream_body(): void
     {
         $stream = fopen('php://memory', 'rb+');
+        self::assertIsResource($stream);
         fwrite($stream, 'Stream content');
         rewind($stream);
 
@@ -171,6 +172,7 @@ final class FileResponseTest extends TestCase
     public function it_sends_response_with_stream_body(): void
     {
         $stream = fopen('php://memory', 'rb+');
+        self::assertIsResource($stream);
         fwrite($stream, 'Stream content');
         rewind($stream);
 
