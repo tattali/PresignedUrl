@@ -12,7 +12,8 @@
         }
     ],
     "require": {
-        "php": ">=8.2"
+        "php": ">=8.2",
+        "ext-fileinfo": "*"
     },
     "require-dev": {
         "aws/aws-sdk-php": "^3.134",
