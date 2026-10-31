@@ -35,9 +35,7 @@ return (new Configuration())
         __DIR__ . '/src/Bridge/Symfony',
         __DIR__ . '/src/Bridge/Laravel/Http/Controllers/ServeController.php',
     ], [ErrorType::DEV_DEPENDENCY_IN_PROD])
-    // finfo detects local MIME types, gzencode() compresses responses and the compression tests decode them with gzdecode();
-    // both extensions ship with most PHP builds.
-    ->ignoreErrorsOnExtensionAndPath('ext-fileinfo', __DIR__ . '/src/Adapter/LocalAdapter.php', [ErrorType::SHADOW_DEPENDENCY])
+    // gzencode() compresses responses and the compression tests decode them with gzdecode(); the extension ships with most PHP builds.
     ->ignoreErrorsOnExtensionAndPaths('ext-zlib', [
         __DIR__ . '/src/Server/FileServer.php',
         __DIR__ . '/tests/Unit/Server/FileServerCompressionTest.php',
