@@ -55,7 +55,7 @@ final class StorageFactoryTest extends TestCase
     #[Test]
     public function it_creates_flysystem_adapter(): void
     {
-        $filesystem = $this->createMock(FilesystemOperator::class);
+        $filesystem = $this->createStub(FilesystemOperator::class);
 
         $adapter = StorageFactory::flysystemAdapter($filesystem);
 

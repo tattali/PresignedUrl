@@ -255,7 +255,7 @@ final class ServeControllerTest extends TestCase
             ->method('serve')
             ->willReturn($fileResponse);
 
-        $request = $this->createMock(Request::class);
+        $request = $this->createStub(Request::class);
         $request->query = new InputBag([
             'X-Expires' => '1234567890',
             'X-Signature' => 'abc123',
@@ -268,8 +268,7 @@ final class ServeControllerTest extends TestCase
             ->willReturn(['accept' => 'text/plain']);
         $request->headers = $headerBag;
 
-        $request->expects($this->any())
-            ->method('getMethod')
+        $request->method('getMethod')
             ->willReturn('GET');
 
         $controller = new ServeController($fileServer);
@@ -307,12 +306,11 @@ final class ServeControllerTest extends TestCase
      */
     private function createRequest(string $method, array $query, array $headers = []): Request
     {
-        $request = $this->createMock(Request::class);
+        $request = $this->createStub(Request::class);
         $request->query = new InputBag($query);
         $request->headers = new HeaderBag(array_change_key_case($headers, CASE_LOWER));
 
-        $request->expects($this->any())
-            ->method('getMethod')
+        $request->method('getMethod')
             ->willReturn($method);
 
         return $request;
