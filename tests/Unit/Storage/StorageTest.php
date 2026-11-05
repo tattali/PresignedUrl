@@ -154,7 +154,7 @@ final class StorageTest extends TestCase
     {
         $nativeUrl = 'https://s3.amazonaws.com/bucket/file.pdf?X-Amz-Signature=abc123';
 
-        $adapter = $this->createMock(AdapterInterface::class);
+        $adapter = $this->createStub(AdapterInterface::class);
         $adapter->method('supportsNativePresignedUrl')->willReturn(true);
         $adapter->method('nativePresignedUrl')->willReturn($nativeUrl);
 
@@ -168,7 +168,7 @@ final class StorageTest extends TestCase
     #[Test]
     public function it_falls_back_to_internal_url_when_native_returns_null(): void
     {
-        $adapter = $this->createMock(AdapterInterface::class);
+        $adapter = $this->createStub(AdapterInterface::class);
         $adapter->method('supportsNativePresignedUrl')->willReturn(true);
         $adapter->method('nativePresignedUrl')->willReturn(null);
 

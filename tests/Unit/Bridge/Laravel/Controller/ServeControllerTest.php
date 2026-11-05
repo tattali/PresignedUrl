@@ -27,7 +27,7 @@ final class ServeControllerTest extends TestCase
         $fileServer = $this->createMock(FileServerInterface::class);
         $fileServer->expects($this->once())
             ->method('serve')
-            ->with('documents', 'test.txt', 1234567890, 'abc123', 'GET', $this->isType('array'))
+            ->with('documents', 'test.txt', 1234567890, 'abc123', 'GET', $this->isArray())
             ->willReturn($fileResponse);
 
         $request = $this->createRequest('GET', [
@@ -242,7 +242,7 @@ final class ServeControllerTest extends TestCase
         $fileServer = $this->createMock(FileServerInterface::class);
         $fileServer->expects($this->once())
             ->method('serve')
-            ->with('bucket', 'file.txt', 0, '', 'GET', $this->isType('array'))
+            ->with('bucket', 'file.txt', 0, '', 'GET', $this->isArray())
             ->willReturn($fileResponse);
 
         $request = $this->createRequest('GET', []);
